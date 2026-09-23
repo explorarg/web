@@ -1,0 +1,12 @@
+# Esta carpeta contiene las imágenes del sitio
+
+## Logo Principal
+- ovni-logo.svg (REQUERIDO - Colocar tu archivo SVG aquí)
+
+## Hero Images
+- hero-home.jpg
+- hero-default.jpg
+
+## Placeholders
+- placeholder-category.jpg
+- placeholder-package.jpg

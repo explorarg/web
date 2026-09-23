@@ -1,0 +1,216 @@
+{
+  "branding": {
+    "siteName": "Explorarg",
+    "name": "Benjamin Garcia",
+    "siteDescription": "Hacemos que viajar sea simple.",
+    "siteUrlDefault": "https://explorarg.com",
+    "logo": {
+      "imagePath": "/logo.png",
+      "imageUrl": "https://pub-d46d65c2f2f84bdfbc890c5b69ec0b7e.r2.dev/panel-admin/uploads/1777696435583-34df148519c6c5f2.png",
+      "url": "https://pub-d46d65c2f2f84bdfbc890c5b69ec0b7e.r2.dev/panel-admin/uploads/1777696435583-34df148519c6c5f2.png",
+      "titleText": "Explorarg",
+      "altTextTemplate": "{{siteName}} - Viajes y Turismo"
+    },
+    "palette": {
+      "primary": "#0ea5e9",
+      "secondary": "#0f172a",
+      "success": "#16A34A",
+      "successStrong": "#15803D",
+      "dark": "#0F172A",
+      "cream": "#FAF7F0"
+    }
+  },
+  "company": {
+    "adminEmailDefault": "explorargturismo@gmail.com",
+    "whatsappMessageDefault": "Hola Explorarg! Quiero consultar por: ",
+    "contact": {
+      "direccion": "Buenos Aires, Argentina",
+      "horario": "Lunes a viernes: 10:00 a 18:00 hs | Sábados: 10:30 a 14:00 hs",
+      "businessHours": "Lunes a viernes: 10:00 a 18:00 hs | Sábados: 10:30 a 14:00 hs",
+      "email": "explorargturismo@gmail.com",
+      "telefono": "+54 9 11 3162 1772",
+      "telefonoSecundario": "",
+      "whatsappNumber": "5491131621772",
+      "phone": "+54 9 11 3162 1772",
+      "mapUrl": ""
+    },
+    "social": {
+      "facebook": "https://www.facebook.com/Explorarg/",
+      "instagram": "https://www.instagram.com/explorarg.tur/",
+      "instagramHandle": "@explorarg.tur",
+      "threads": "",
+      "tiktok": "",
+      "whatsappChannel": "",
+      "email": "mailto:explorargturismo@gmail.com",
+      "items": [
+        {
+          "platform": "Facebook",
+          "url": "https://www.facebook.com/Explorarg/"
+        },
+        {
+          "platform": "Instagram",
+          "url": "https://www.instagram.com/explorarg.tur/"
+        }
+      ]
+    },
+    "legal": {
+      "razonSocial": "Explorarg Turismo",
+      "cuit": "",
+      "legajoRnav": "19.506"
+    },
+    "developerCredits": {
+      "name": "Tucs Digital",
+      "url": "https://instagram.com/tucsdigital"
+    }
+  },
+  "features": {
+    "showContactMap": false
+  },
+  "mapa": {
+    "show": false
+  },
+  "seo": {
+    "locale": "es_AR",
+    "title": "Benjamin Garcia",
+    "description": "Hacemos que viajar sea simple.",
+    "titleDefaultTemplate": "{{siteName}} - Hacemos que viajar sea simple",
+    "titleTemplate": "%s | {{siteName}}",
+    "openGraphImagePath": "/og-image.png",
+    "image": "https://pub-d46d65c2f2f84bdfbc890c5b69ec0b7e.r2.dev/panel-admin/uploads/1777696435583-34df148519c6c5f2.png",
+    "keywords": [
+      "explorarg",
+      "viajes argentina",
+      "turismo argentina",
+      "paquetes turisticos",
+      "benjamin garcia",
+      "viajes grupales",
+      "destinos argentina",
+      "turismo aventura",
+      "escapadas fin de semana",
+      "viajes familiares"
+    ]
+  },
+  "hero": {
+    "title": "Benjamin Garcia",
+    "tagline": "Hacemos que viajar sea simple."
+  },
+  "content": {
+    "homeHero": {
+      "badge": "Explorá Argentina",
+      "titlePrefix": "Descubrí tu",
+      "titleAccent": "próxima aventura",
+      "subtitleTemplate": "Hacemos que viajar sea simple."
+    },
+    "packagesSection": {
+      "badge": "Paquetes",
+      "title": "Viajes y Experiencias",
+      "subtitleTemplate": "Descubrí nuestros paquetes seleccionados para vivir momentos inolvidables."
+    },
+    "services": {
+      "badge": "Servicios",
+      "titlePrefix": "Nuestros",
+      "titleAccent": "Servicios",
+      "subtitle": "Hacemos que viajar sea simple.",
+      "items": [
+        {
+          "icon": "Briefcase",
+          "title": "Paquetes Turísticos",
+          "desc": "Organizamos viajes completos a destinos nacionales e internacionales, combinando transporte, alojamiento y actividades."
+        },
+        {
+          "icon": "Users",
+          "title": "Salidas Grupales",
+          "desc": "Ofrecemos salidas grupales a distintos destinos, con coordinación durante el viaje y planificación previa."
+        },
+        {
+          "icon": "Plane",
+          "title": "Pasajes Aéreos y Terrestres",
+          "desc": "Gestionamos la venta de pasajes aéreos y de bus a distintos destinos, brindando asesoramiento para encontrar la mejor opción."
+        },
+        {
+          "icon": "MapPin",
+          "title": "Excursiones y Experiencias",
+          "desc": "Complementamos cada viaje con excursiones y actividades en destino, permitiendo descubrir paisajes y cultura única."
+        }
+      ]
+    },
+    "values": {
+      "badge": "Valores",
+      "title": "¿Por qué elegirnos?",
+      "subtitle": "Hacemos que viajar sea simple.",
+      "items": [
+        {
+          "icon": "Heart",
+          "number": "01",
+          "title": "Atención Personalizada",
+          "desc": "Asesoramiento cercano y adaptado a las necesidades de cada pasajero."
+        },
+        {
+          "icon": "Sparkles",
+          "number": "02",
+          "title": "Experiencias Inolvidables",
+          "desc": "Ayudamos a crear momentos y recuerdos únicos en cada destino."
+        },
+        {
+          "icon": "Shield",
+          "number": "03",
+          "title": "Confianza y Seguridad",
+          "desc": "Trabajamos con proveedores confiables para que los pasajeros viajen con tranquilidad."
+        },
+        {
+          "icon": "Compass",
+          "number": "04",
+          "title": "Asesoramiento Profesional",
+          "desc": "Orientación clara y honesta para elegir el destino que mejor se adapte a las expectativas."
+        },
+        {
+          "icon": "Calendar",
+          "number": "05",
+          "title": "Organización y Compromiso",
+          "desc": "Planificamos con responsabilidad asegurando que todo funcione correctamente."
+        },
+        {
+          "icon": "MessageCircle",
+          "number": "06",
+          "title": "Cercanía con el Cliente",
+          "desc": "Comunicación directa y amable, generando relaciones de confianza."
+        }
+      ]
+    },
+    "about": {
+      "badge": "Sobre Nosotros",
+      "titlePrefix": "Conocé",
+      "titleAccent": "Explorarg",
+      "image": {
+        "src": "/images/about-explorarg.webp",
+        "altTemplate": "Equipo de {{siteName}}"
+      },
+      "paragraphs": [
+        [
+          {
+            "text": "En Explorarg somos una agencia de viajes dedicada a crear experiencias únicas para cada viajero. Nuestro objetivo es acompañar a nuestros pasajeros en cada etapa del viaje, brindando asesoramiento personalizado, confianza y organización para que solo tengan que preocuparse por disfrutar. Contamos con experiencia en la planificación y venta de viajes nacionales e internacionales, ofreciendo salidas grupales, paquetes turísticos, pasajes aéreos, excursiones y reservas de alojamiento."
+          }
+        ]
+      ]
+    },
+    "contactBlock": {
+      "badge": "Contactanos",
+      "titlePrefix": "Estamos para",
+      "titleAccent": "ayudarte",
+      "subtitle": "¿Tenés dudas sobre un paquete? ¿Querés información adicional? Escribinos y te respondemos a la brevedad."
+    },
+    "contactForm": {
+      "title": "Envianos tu consulta",
+      "subtitle": "Completá el formulario y nuestro equipo te contacta a la brevedad",
+      "whatsappCta": "Consultar por WhatsApp",
+      "image": {
+        "src": "/images/contact-explorarg.webp",
+        "altTemplate": "Atención al cliente {{siteName}}"
+      }
+    },
+    "footer": {
+      "taglineTemplate": "{{siteDescription}}",
+      "copyrightTemplate": "© {{year}} {{logoTitleText}}. Todos los derechos reservados."
+    }
+  }
+}

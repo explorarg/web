@@ -1,0 +1,193 @@
+{
+    "testimonials": [
+      {
+        "name": "Jorge",
+        "country": "Argentina",
+        "comment": "Excelente. Lo hicimos ayer y la pasamos de 10, muchas gracias, Viaggio Tur, y muchas gracias a la guía Nathy, una genia.",
+        "categories": ["Río"]
+      },
+      {
+        "name": "Gabriela Fernandez",
+        "country": "Argentina",
+        "comment": "Para la próxima ida a Rio, quiero más tours contigo… este año me quedé con ganas de conocer más sobre esa ciudad maravilhosa.",
+        "categories": ["Río"]
+      },
+      {
+        "name": "Katheroine",
+        "country": "Chile",
+        "comment": "Holaa, te hablaba para contarte que hice el tour a Arraial contigo y todo fabuloso, el transporte, la guía, el barco, todo genial, así que muy agradecida.",
+        "categories": ["Arraial"]
+      },
+      {
+        "name": "Mar y Thor",
+        "country": "Argentina",
+        "comment": "Yo hice esta excursión con Uds por esta publicidad y la pasé tan bien que en el recorrido ya escribí para contratar al otro día Cabo Frío. Son lo más, súper responsables y realmente lo vale.",
+        "categories": ["Cabo Frío"]
+      },
+      {
+        "name": "Silvia",
+        "country": "Colombia",
+        "comment": "Hola! gracias por tu preocupación. Ya estamos volviendo. Todo divino. Queremos con mi esposo aprovechar también para agradecerle a Wallace, que fue siempre muy amable y atento con todos."
+      },
+      {
+        "name": "Isaac Acuña",
+        "country": "Argentina",
+        "comment": "Buen día Marcelo. Queríamos agradecer y felicitar por el excelente tour que tuvimos el día de ayer con Josy. La verdad una genia. Amable, predispuesta y con toda la onda. Saludos y seguro volveremos con ustedes.",
+        "categories": ["Río"]
+      },
+      {
+        "name": "Rifle",
+        "country": "Argentina",
+        "comment": "Excelentes tus servicios. Fui el 16 de febrero a Angra con Tatiana, INOLVIDABLE. Gracias amigo.",
+        "categories": ["Angra"]
+      },
+      {
+        "name": "Maria Jose Riquelme",
+        "country": "Chile",
+        "comment": "Muchas gracias, nos encantó el tour."
+      },
+      {
+        "name": "Patri",
+        "country": "Argentina",
+        "comment": "Hola todo muy bueno, la atención por parte del guía y los chicos del barco. Lo más lindo fue tirarse al mar y la buena onda que le ponían todos!"
+      },
+      {
+        "name": "Laura Gomez",
+        "country": "Uruguay",
+        "comment": "Hola! muchas gracias a ustedes por su calidad de atención, estamos muy contentos con todo lo vivido y es gracias a ustedes."
+      },
+      {
+        "name": "Susana",
+        "country": "Argentina",
+        "comment": "Hola! todo muy lindo el tour, quedamos enamorados de la playa, esas arenas blancas. La verdad que muy linda la atención de todos. Gracias a ustedes por la buena atención."
+      },
+      {
+        "name": "Martin Diaz",
+        "country": "México",
+        "comment": "La verdad súper lindo todo! sí, sacamos muchas fotos, las subo y los etiqueto en Instagram."
+      },
+      {
+        "name": "Pao",
+        "country": "Argentina",
+        "comment": "Pasamos un Día Increíble. Conocimos lugares maravillosos. Naty la guía es súper amable, fresca, divertida y le puso toda la onda. ¡Sumamente Agradecidos!"
+      },
+      {
+        "name": "Sofia Vargas",
+        "country": "Perú",
+        "comment": "Hola, buen día! Solo escribía para agradecerles por el tour en Río, la pasamos bastante bien y la guía Nathy fue muy agradable y atenta con nosotros! Todo estuvo muy bien."
+      },
+      {
+        "name": "Carlos Ruiz",
+        "country": "Colombia",
+        "comment": "Hola, cómo están? Una experiencia hermosa, rodeada de un paisaje maravilloso. Tuve la oportunidad de nadar con peces y compartir con un excelente grupo de personas. Muchas gracias."
+      },
+      {
+        "name": "Daniela y Ariel",
+        "country": "Argentina",
+        "comment": "El paseo por Angra Dos Reis e Ilha Grande estuvo espectacular!!! Hernan nos llevó a todos los lugares tal cual lo programado y nos permitió disfrutar cada minuto. ¡Muchísimas gracias!",
+        "categories": ["Angra"]
+      },
+      {
+        "name": "Melani Barreto",
+        "country": "Uruguay",
+        "comment": "La verdad que todo excelente, tanto Hugo como Pedro unos genios y todo el tiempo súper atentos! Una Experiencia maravillosa que sin duda alguna volvería a repetir! Gracias por todo."
+      },
+      {
+        "name": "Yuleidys",
+        "country": "Colombia",
+        "comment": "Hola, muchísimas gracias por toda la atención que tuvieron con nosotros en los diferentes tours, tienen un equipo sin duda excepcional."
+      },
+      {
+        "name": "Melanie Gonzales",
+        "country": "Chile",
+        "comment": "Lo pasamos muy bien hoy, gracias por todo!"
+      },
+      {
+        "name": "Andrea",
+        "country": "Argentina",
+        "comment": "Hola, el Tour fue más de lo que me imaginé, la pasamos super bien, el guía Anderson es muy divertido. Mi hija salió feliz porque ese era un regalo de 15 años y ustedes me dieron la confianza y seguridad."
+      },
+      {
+        "name": "Lucero Roman",
+        "country": "Perú",
+        "comment": "Hoy fui al paseo y fue muy lindo!! En especial la buena vibra de Raquel!!!"
+      },
+      {
+        "name": "Lucy Rojas",
+        "country": "Colombia",
+        "comment": "La atención de Lu fue la mejor."
+      },
+      {
+        "name": "Anto Dangelo",
+        "country": "Argentina",
+        "comment": "Gracias Viaggio Tur, Hermosa Excursión."
+      },
+      {
+        "name": "Silvina y Liliana",
+        "country": "Argentina",
+        "comment": "Estamos felices por el día que pasamos, todos los puntos hermosos y Anderson un genio, nos explicó perfectamente. Muchísimas gracias por esa maravillosa experiencia."
+      },
+      {
+        "name": "Pablo",
+        "country": "Argentina",
+        "comment": "Quería comentarles mi experiencia con ustedes, muy bueno todo. El guía Pedro 10 puntos. Gracias por la experiencia vivida."
+      },
+      {
+        "name": "Eliana Guzman",
+        "country": "Venezuela",
+        "comment": "100% recomendados, juro que no se van a arrepentir."
+      },
+      {
+        "name": "Andrades",
+        "country": "Chile",
+        "comment": "RECOMIENDO A MARCELO, Persona muy atenta y responsable con su trabajo, su tour es de las mejores actividades que pudimos hacer en Río de Janeiro."
+      },
+      {
+        "name": "Ashley Najurys Bravo",
+        "country": "Ecuador",
+        "comment": "La mejor decisión fue contratarlos a ustedes, hicieron de nuestro viaje una experiencia única. Si vuelvo a Brasil sería para disfrutar nuevamente con ustedes."
+      },
+      {
+        "name": "Juan Perez",
+        "country": "Colombia",
+        "comment": "Solamente le escribo para darte las gracias a ti y a nuestro guía Claudio, estuvimos muy muy felices a pesar del clima, Claudio siempre fue muy amable y respetuoso."
+      },
+      {
+        "name": "Frodo",
+        "country": "Argentina",
+        "comment": "Yo lo contraté para festejar mi cumpleaños… en realidad lo recomiendo… excelente tanto el servicio como la gente que trabaja en la empresa. Saludos desde Argentina."
+      },
+      {
+        "name": "Jose Luis Rodriguez",
+        "country": "México",
+        "comment": "Yo hice el tour de Arraial do Cabo y fue excelente el equipo de trabajo, la pasé muy bien, gracias Viaggio Tur.",
+        "categories": ["Arraial"]
+      },
+      {
+        "name": "Oriana",
+        "country": "Colombia",
+        "comment": "Buenos días, me encantó el tour, súper recomendado."
+      },
+      {
+        "name": "Erica Mendez",
+        "country": "Argentina",
+        "comment": "Los mejores lejos, un abrazo. Saludos a Wallace."
+      },
+      {
+        "name": "Romina Alpuy",
+        "country": "Uruguay",
+        "comment": "Re lindo pasé el otro día en el tour Un Día en Río, muchas gracias por eso. Me enamoré totalmente y Susane una genia, la mejor. 5 estrellas ella."
+      },
+      {
+        "name": "Norma Beatriz Cajal",
+        "country": "Argentina",
+        "comment": "Fuimos y es increíble, volveremos… Y Marcelo nos hizo el servicio de excursión que la pasamos genial."
+      },
+      {
+        "name": "Keisy Maria",
+        "country": "Venezuela",
+        "comment": "Encantadísima con el tour, se los recomiendo a cualquiera que decida visitar Río. Súper puntuales y los guías súper interactivos."
+      }
+    ]
+  }
+  
