@@ -1,6 +1,6 @@
 import Link from 'next/link';
 import { Button } from '@/components/ui/button';
-import { CheckCircle, Mail, MessageCircle, ArrowRight, Clock, AlertTriangle, XCircle } from 'lucide-react';
+import { CheckCircle, MessageCircle, ArrowRight, Clock, AlertTriangle, XCircle } from 'lucide-react';
 import Navbar from '@/components/Navbar';
 import { getPaqueteBySlug } from '@/lib/paquetes';
 import ClearCheckoutStorage from '@/components/checkout/ClearCheckoutStorage';
@@ -12,7 +12,6 @@ import { doc, getDoc } from 'firebase/firestore';
 import { buildVentaStatuses } from '@/lib/sales/status';
 import { getSeatCategoryExtraSummaries, getSeatCategoryTotalAmount, getSeatTypeLabel } from '@/lib/reservas/seat-category-extras';
 import { getReservationExtraTotalAmount, getSinglePassengerSurchargeSummary, isSinglePassengerSurchargeExtra } from '@/lib/packages/resolve-departure';
-import SinglePassengerSurchargeBreakdown from '@/components/pricing/SinglePassengerSurchargeBreakdown';
 
 /** Sin caché: datos de paquete siempre actualizados */
 export const revalidate = 0;
@@ -266,16 +265,14 @@ export default async function CheckoutSuccessPage({
     : Array.isArray(primaryItem?.selectedExtras)
       ? primaryItem.selectedExtras
       : [];
-  const originalPackageUnitAmount =
-    typeof primaryReservation?.pricingBaseUnitAmount === 'number'
-      ? primaryReservation.pricingBaseUnitAmount
-      : typeof primaryItem?.pricingBaseUnitAmount === 'number'
-        ? primaryItem.pricingBaseUnitAmount
-        : null;
-  const originalPackageAmount =
-    originalPackageUnitAmount !== null && Number(primaryReservation?.people ?? primaryItem?.people ?? people) > 0
-      ? Math.round(originalPackageUnitAmount) * Math.max(1, Number(primaryReservation?.people ?? primaryItem?.people ?? people) || 1)
+  const packageUnitAmount = typeof primaryReservation?.pricingBaseUnitAmount === 'number'
+    ? Number(primaryReservation.pricingBaseUnitAmount)
+    : typeof primaryItem?.pricingBaseUnitAmount === 'number'
+      ? Number(primaryItem.pricingBaseUnitAmount)
       : null;
+  const packageAmount = packageUnitAmount !== null
+    ? Math.round(packageUnitAmount) * Math.max(1, Number(primaryReservation?.people ?? primaryItem?.people ?? people) || 1)
+    : null;
   const seatCategoryExtras = getSeatCategoryExtraSummaries(selectedExtras);
   const seatTypeLabel = getSeatTypeLabel(
     selectedExtras,
@@ -288,8 +285,8 @@ export default async function CheckoutSuccessPage({
   const seatCategoryTotalAmount = getSeatCategoryTotalAmount(selectedExtras);
   const surchargePeople = Math.max(1, Number(primaryReservation?.people ?? primaryItem?.people ?? people) || 1);
   const surchargeBaseSubtotalAmount =
-    originalPackageAmount !== null
-      ? originalPackageAmount
+    packageAmount !== null
+      ? packageAmount
       : Math.max(
           0,
           orderAmount -
@@ -311,6 +308,7 @@ export default async function CheckoutSuccessPage({
 
   const hasSession = Boolean(sessionId);
   const heading = orderId ? orderHeadline({ statusRaw: orderDisplayStatus, reservationReady }) : null;
+  const isSuccessfulState = !orderId || heading?.tone === 'success';
   const icon =
     !orderId
       ? <CheckCircle className="h-12 w-12" strokeWidth={2} />
@@ -321,168 +319,52 @@ export default async function CheckoutSuccessPage({
           : heading?.tone === 'warning'
             ? <AlertTriangle className="h-12 w-12" strokeWidth={2} />
             : <XCircle className="h-12 w-12" strokeWidth={2} />;
-  const iconBg =
-    !orderId
-      ? 'bg-success/15 text-success'
-      : heading?.tone === 'success'
-        ? 'bg-success/15 text-success'
-        : heading?.tone === 'pending'
-          ? 'bg-gray-500/10 text-gray-600'
-          : heading?.tone === 'warning'
-            ? 'bg-amber-500/15 text-amber-700'
-            : 'bg-red-500/10 text-red-600';
-
   return (
     <div className="min-h-screen bg-[#F9FAFB]">
       <ClearCheckoutStorage slug={slug} date={date} people={people} />
       <Navbar variant="homeMockup" reserveSpace />
-      <div className="container mx-auto max-w-xl px-4 py-12 md:py-20">
-        <div className="rounded-2xl border border-gray-200/80 bg-white p-6 shadow-sm md:p-8">
-          <div className="flex flex-col items-center text-center">
-            <div className={`inline-flex h-20 w-20 items-center justify-center rounded-full ${iconBg}`}>
-              {icon}
+      <div className="container mx-auto max-w-2xl px-4 py-8 md:py-14">
+        <div className="overflow-hidden rounded-[28px] border border-slate-200 bg-white shadow-[0_24px_80px_rgba(24,51,62,0.12)]">
+          <section className={`relative overflow-hidden px-6 py-9 text-center text-white sm:px-10 ${isSuccessfulState ? 'bg-gradient-to-br from-[#103D46] via-[#126B70] to-[#15969A]' : heading?.tone === 'pending' ? 'bg-gradient-to-br from-slate-700 to-slate-900' : heading?.tone === 'warning' ? 'bg-gradient-to-br from-amber-700 to-amber-900' : 'bg-gradient-to-br from-rose-700 to-rose-900'}`}>
+            <div className="pointer-events-none absolute -right-16 -top-24 h-64 w-64 rounded-full border border-white/10" />
+            <div className="pointer-events-none absolute -bottom-36 -left-20 h-64 w-64 rounded-full border border-white/10" />
+            <div className="relative mx-auto flex max-w-lg flex-col items-center">
+              <div className="flex h-16 w-16 items-center justify-center rounded-2xl bg-white/15 ring-1 ring-white/25 shadow-lg shadow-black/10">{icon}</div>
+              <p className="mt-5 text-[11px] font-bold uppercase tracking-[0.2em] text-white/70">{isSuccessfulState ? 'Explorarg · Compra segura' : 'Estado de tu compra'}</p>
+              <h1 className="mt-2 text-3xl font-bold tracking-tight sm:text-4xl">{orderId ? (heading?.title ?? 'Tu compra') : '¡Compra confirmada!'}</h1>
+              <p className="mt-3 max-w-md text-sm leading-6 text-white/80">{orderId ? (heading?.subtitle ?? 'Estamos verificando el estado del pago.') : 'Tu pago se procesó correctamente. Ya estamos preparando los detalles de tu reserva.'}</p>
             </div>
-            <h1 className="mt-6 text-2xl font-bold text-gray-900 md:text-3xl">
-              {orderId ? (heading?.title ?? 'Tu compra') : '¡Reserva confirmada!'}
-            </h1>
-            <p className="mt-3 text-base text-gray-600">
-              {orderId ? (heading?.subtitle ?? 'Estamos verificando el estado del pago.') : 'Tu pago se procesó correctamente. Estamos confirmando tu reserva y el envío de los emails automáticamente.'}
-            </p>
-          </div>
+          </section>
 
-          <div className="mt-8 rounded-xl border border-gray-100 bg-gray-50/80 p-5">
-            <p className="text-xs font-semibold uppercase tracking-wide text-gray-500">
-              Detalle de la reserva
-            </p>
-            <div className="mt-4 space-y-4 text-sm text-gray-700">
-              <div>
-                <p className="text-xs font-medium uppercase tracking-wide text-gray-500">Experiencia</p>
-                <p className="mt-1 text-base font-semibold text-gray-900">{title}</p>
+          <div className="p-5 sm:p-8">
+            <div className="rounded-2xl border border-slate-200 bg-slate-50/80 p-5 sm:p-6">
+              <p className="text-[10px] font-bold uppercase tracking-[0.18em] text-[#18878B]">Tu viaje</p>
+              <h2 className="mt-2 text-xl font-bold leading-snug text-[#18333E] sm:text-2xl">{title}</h2>
+              <div className="mt-5 grid gap-3 sm:grid-cols-2">
+                <div className="rounded-xl bg-white p-3.5 ring-1 ring-slate-200/70"><p className="text-[10px] font-bold uppercase tracking-wider text-slate-400">Fecha</p><p className="mt-1 text-sm font-semibold capitalize text-slate-800">{dateLabel}</p></div>
+                {entriesLabel && <div className="rounded-xl bg-white p-3.5 ring-1 ring-slate-200/70"><p className="text-[10px] font-bold uppercase tracking-wider text-slate-400">Pasajeros</p><p className="mt-1 text-sm font-semibold text-slate-800">{entriesLabel}</p></div>}
+                {locationLabel && <div className="rounded-xl bg-white p-3.5 ring-1 ring-slate-200/70"><p className="text-[10px] font-bold uppercase tracking-wider text-slate-400">Butacas</p><p className="mt-1 text-sm font-semibold text-slate-800">{locationLabel}</p></div>}
+                {pickupPointLabel && <div className="rounded-xl bg-white p-3.5 ring-1 ring-slate-200/70"><p className="text-[10px] font-bold uppercase tracking-wider text-slate-400">Punto de ascenso</p><p className="mt-1 text-sm font-semibold text-slate-800">{pickupPointLabel}{pickupPointTimeLabel ? ` · ${pickupPointTimeLabel}` : ''}</p></div>}
               </div>
-              <div className="grid gap-4 sm:grid-cols-2">
-                <div>
-                  <p className="text-xs font-medium uppercase tracking-wide text-gray-500">Fecha</p>
-                  <p className="mt-1 capitalize">{dateLabel}</p>
-                </div>
-                {entriesLabel ? (
-                  <div>
-                    <p className="text-xs font-medium uppercase tracking-wide text-gray-500">Entradas</p>
-                    <p className="mt-1">{entriesLabel}</p>
-                  </div>
-                ) : null}
-              </div>
-              {locationLabel ? (
-                <div>
-                  <p className="text-xs font-medium uppercase tracking-wide text-gray-500">Ubicación</p>
-                  <p className="mt-1">{locationLabel}</p>
-                </div>
-              ) : null}
-              {pickupPointLabel ? (
-                <div>
-                  <div>
-                    <p className="text-xs font-medium uppercase tracking-wide text-gray-500">Ascenso</p>
-                    <p className="mt-1">
-                      {pickupPointLabel}
-                      {pickupPointTimeLabel ? ` · ${pickupPointTimeLabel}` : ' · Horario a confirmar'}
-                    </p>
-                  </div>
-                </div>
-              ) : null}
-              {selectedExtras.filter((extra: any) => !isSinglePassengerSurchargeExtra(extra)).length > 0 ? (
-                <div>
-                  <p className="text-xs font-medium uppercase tracking-wide text-gray-500">Extras</p>
-                  <p className="mt-1">
-                    {selectedExtras
-                      .filter((extra: any) => !isSinglePassengerSurchargeExtra(extra))
-                      .map((extra: any) => String(extra?.label ?? ''))
-                      .filter(Boolean)
-                      .join(', ')}
-                  </p>
-                </div>
-              ) : null}
-              {singlePassengerSurcharge.applies ? (
-                <SinglePassengerSurchargeBreakdown
-                  label={singlePassengerSurcharge.label}
-                  amountLabel={formatCurrency(singlePassengerSurcharge.amount, orderCurrency)}
-                  className="mt-1"
-                />
-              ) : null}
-              {seatTypeLabel ? (
-                <div>
-                  <p className="text-xs font-medium uppercase tracking-wide text-gray-500">Tipo de butaca</p>
-                  <p className="mt-1">{seatTypeLabel}</p>
-                  {seatCategoryExtras.length > 0 ? (
-                    <div className="mt-1 text-xs text-gray-500">
-                      {seatCategoryExtras
-                        .map((extra) => `${extra.label}: ${formatCurrency(extra.totalAmount, orderCurrency)}`)
-                        .join(' · ')}
-                      {seatCategoryTotalAmount > 0 ? ` · Plus total: ${formatCurrency(seatCategoryTotalAmount, orderCurrency)}` : ''}
-                    </div>
-                  ) : null}
-                </div>
-              ) : null}
-              <div className="grid gap-4 sm:grid-cols-2">
-                <div>
-                  <p className="text-xs font-medium uppercase tracking-wide text-gray-500">Total abonado</p>
-                  <p className="mt-1 font-semibold text-gray-900">{amountLabel}</p>
-                  {originalPackageAmount !== null ? (
-                    <p className="mt-1 text-xs text-gray-500">Precio original del paquete: {formatCurrency(originalPackageAmount, orderCurrency)}</p>
-                  ) : null}
-                  {orderDiscountAmount > 0 ? (
-                    <div className="mt-2 rounded-lg bg-emerald-50 px-3 py-2 text-xs text-emerald-800">
-                      <p className="font-semibold">{String(orderDiscount?.nombre ?? 'Beneficio aplicado')}{orderPromotionCode ? ` · Código ${orderPromotionCode}` : ''}</p>
-                      <p className="mt-0.5">Descuento aplicado: −{formatCurrency(orderDiscountAmount, orderCurrency)}</p>
-                    </div>
-                  ) : null}
-                  {singlePassengerSurcharge.applies ? (
-                    <p className="mt-1 text-xs text-gray-500">
-                      Recargo tarifa individual: {formatCurrency(singlePassengerSurcharge.amount, orderCurrency)}
-                    </p>
-                  ) : null}
-                </div>
-                <div>
-                  <p className="text-xs font-medium uppercase tracking-wide text-gray-500">Estado del pago</p>
-                  <p className="mt-1">{paymentStatusLabel}</p>
-                </div>
-              </div>
-              {orderId ? (
-                <div>
-                  <p className="text-xs font-medium uppercase tracking-wide text-gray-500">Número de orden</p>
-                  <p className="mt-1">{orderId}</p>
-                </div>
-              ) : null}
-              {orderId ? (
-                <div className="border-t border-gray-200 pt-4">
-                  <p className="text-xs font-medium uppercase tracking-wide text-gray-500">
-                    {reservationCodeValues.length > 1 ? 'Códigos de reserva' : 'Código de reserva'}
-                  </p>
-                  {reservationCodeValues.length > 0 ? (
-                    <div className="mt-2 space-y-2">
-                      {reservationCodeValues.map((r) => (
-                        <div key={r.id} className="font-mono text-sm text-gray-900">
-                          {r.code}
-                        </div>
-                      ))}
-                      <p className="text-sm text-gray-600">
-                        Guardalo para presentarlo el día de la actividad.
-                      </p>
-                    </div>
-                  ) : (
-                    <div className="mt-2 space-y-2 text-sm text-gray-600">
-                      <p>Estamos generando tu código de reserva.</p>
-                      <p>Lo recibirás en los próximos minutos por correo electrónico y/o WhatsApp.</p>
-                      <p>Si luego de unos minutos no lo recibís, comunicate con nuestro equipo de soporte.</p>
-                    </div>
-                  )}
-                </div>
-              ) : null}
+              {seatTypeLabel && <p className="mt-4 text-xs text-slate-500">Butaca: <span className="font-semibold text-slate-700">{seatTypeLabel}</span>{seatCategoryExtras.length > 0 ? ` · ${seatCategoryExtras.map((extra) => `${extra.label}: ${formatCurrency(extra.totalAmount, orderCurrency)}`).join(' · ')}` : ''}{seatCategoryTotalAmount > 0 ? ` · Plus ${formatCurrency(seatCategoryTotalAmount, orderCurrency)}` : ''}</p>}
+              {selectedExtras.filter((extra: any) => !isSinglePassengerSurchargeExtra(extra)).length > 0 && <p className="mt-2 text-xs text-slate-500">Extras: <span className="font-medium text-slate-700">{selectedExtras.filter((extra: any) => !isSinglePassengerSurchargeExtra(extra)).map((extra: any) => String(extra?.label ?? '')).filter(Boolean).join(', ')}</span></p>}
             </div>
-            {!orderId && !hasSession && (
-              <p className="mt-3 rounded-lg bg-yellow-50 p-3 text-xs text-yellow-700">
-                No detectamos el identificador de sesión. Si esto sucede, escribinos por WhatsApp
-                o mandá un email a {CONTACT_INFO.email} para que lo verifiquemos.
-              </p>
-            )}
+
+            <div className="mt-4 rounded-2xl border border-slate-200 p-5 sm:p-6">
+              <div className="flex items-end justify-between gap-4">
+                <div><p className="text-xs font-semibold text-slate-500">{isSuccessfulState ? 'Total abonado' : 'Total de la compra'}</p><p className="mt-1 text-3xl font-bold tracking-tight text-[#18333E]">{amountLabel}</p></div>
+                <div className={`rounded-full px-3 py-1.5 text-xs font-bold ${isSuccessfulState ? 'bg-emerald-50 text-emerald-700' : heading?.tone === 'pending' ? 'bg-amber-50 text-amber-800' : 'bg-slate-100 text-slate-700'}`}>{paymentStatusLabel}</div>
+              </div>
+              {orderDiscountAmount > 0 && <div className="mt-4 flex items-center justify-between gap-3 rounded-xl bg-emerald-50 px-4 py-3 text-sm text-emerald-800"><div><p className="font-semibold">{String(orderDiscount?.nombre ?? 'Beneficio aplicado')}{orderPromotionCode ? ` · ${orderPromotionCode}` : ''}</p><p className="mt-0.5 text-xs text-emerald-700">Descuento aplicado</p></div><p className="shrink-0 font-bold">−{formatCurrency(orderDiscountAmount, orderCurrency)}</p></div>}
+              {singlePassengerSurcharge.applies && <p className="mt-3 text-xs text-slate-500">Incluye {singlePassengerSurcharge.label.toLowerCase()}: {formatCurrency(singlePassengerSurcharge.amount, orderCurrency)}</p>}
+            </div>
+
+            {orderId && <div className="mt-4 rounded-2xl border border-[#BFE6E2] bg-[#F0FAF9] p-5 sm:p-6">
+              <p className="text-[10px] font-bold uppercase tracking-[0.18em] text-[#18878B]">{reservationCodeValues.length > 1 ? 'Códigos de reserva' : 'Código de reserva'}</p>
+              {reservationCodeValues.length > 0 ? <div className="mt-3 flex flex-wrap gap-2">{reservationCodeValues.map((reservation) => <span key={reservation.id} className="rounded-lg border border-[#BFE6E2] bg-white px-3 py-2 font-mono text-sm font-bold tracking-wider text-[#155E63]">{reservation.code}</span>)}</div> : <p className="mt-2 text-sm font-medium text-slate-700">Se está generando y aparecerá acá en unos instantes.</p>}
+              {reservationCodeValues.length > 0 && <p className="mt-2 text-xs text-slate-500">Guardá este código para el día de tu viaje. También te lo enviamos por correo.</p>}
+            </div>}
+            {!orderId && !hasSession && <p className="mt-4 rounded-xl bg-amber-50 px-4 py-3 text-xs leading-5 text-amber-800">No pudimos vincular esta confirmación con una orden. Si necesitás ayuda, escribinos a {CONTACT_INFO.email}.</p>}
           </div>
 
           {orderId ? (
@@ -493,31 +375,7 @@ export default async function CheckoutSuccessPage({
             />
           ) : (hasSession ? <SuccessVerification sessionId={sessionId} /> : null)}
 
-          <div className="mt-8 space-y-4">
-            <p className="text-center text-sm font-medium text-gray-700">
-              ¿Qué sigue?
-            </p>
-            <ul className="space-y-3 text-sm text-gray-600">
-              <li className="flex items-start gap-3">
-                <Mail className="mt-0.5 h-5 w-5 shrink-0 text-primary" />
-                <span>Revisá tu correo electrónico.</span>
-              </li>
-              <li className="flex items-start gap-3">
-                <MessageCircle className="mt-0.5 h-5 w-5 shrink-0 text-success" />
-                <span>Verificá tu WhatsApp.</span>
-              </li>
-              <li className="flex items-start gap-3">
-                <CheckCircle className="mt-0.5 h-5 w-5 shrink-0 text-success" />
-                <span>
-                  {reservationCodeValues.length > 0
-                    ? 'Presentá tu código de reserva el día de la actividad.'
-                    : 'Si luego de unos minutos no recibís el código, comunicate con soporte.'}
-                </span>
-              </li>
-            </ul>
-          </div>
-
-          <div className="mt-8 flex flex-col gap-3 sm:flex-row sm:justify-center">
+          <div className="mt-5 flex flex-col gap-3 sm:flex-row sm:justify-center">
             <Button asChild className="gap-2">
               <Link href={whatsappHref} target="_blank" rel="noopener noreferrer">
                 <MessageCircle className="h-4 w-4" />
