@@ -3,6 +3,7 @@ import { Timestamp } from 'firebase-admin/firestore';
 import { z } from 'zod';
 import { requireAdminToken } from '@/lib/adminAuth';
 import { getAdminDb } from '@/lib/firebaseAdmin';
+import { releaseCommunityRedemption } from '@/lib/community/redemptions';
 
 export const runtime = 'nodejs';
 
@@ -189,7 +190,48 @@ export async function DELETE(request: Request) {
   const ref = db.collection(collectionName).doc(parsed.data.id);
   const snapshot = await ref.get();
   if (!snapshot.exists) return NextResponse.json({ error: 'No se encontró el registro.' }, { status: 404 });
-  if (Number(snapshot.data()?.usosActuales ?? 0) > 0 || Number(snapshot.data()?.usosReservados ?? 0) > 0) return NextResponse.json({ error: 'No se puede eliminar una promoción usada o reservada por un pago pendiente; desactivalo para conservar su historial.' }, { status: 409 });
+
+  const kind = parsed.data.kind;
+  const id = parsed.data.id;
+  // Stop new quotes first so a redemption cannot race with the cleanup below.
+  await ref.update({ activo: false, ultimaModificacion: Timestamp.now() });
+  const redemptions = await db.collection('communityRedemptions')
+    .where('kind', '==', kind)
+    .where('promotionId', '==', id)
+    .get();
+  const now = Date.now();
+  const liveReservations = [] as typeof redemptions.docs;
+  for (const redemptionDoc of redemptions.docs) {
+    const redemption = redemptionDoc.data();
+    if (redemption.status !== 'reserved') continue;
+    const rawExpiry = redemption.expiresAt;
+    const expiresAt = typeof rawExpiry?.toMillis === 'function'
+      ? rawExpiry.toMillis()
+      : rawExpiry ? new Date(rawExpiry).getTime() : 0;
+    const orderSnap = await db.collection('orders').doc(redemptionDoc.id).get();
+    const orderStatus = String(orderSnap.data()?.status ?? '').toLowerCase();
+    const terminalOrder = ['cancelled', 'canceled', 'failed', 'expired'].includes(orderStatus);
+    if ((expiresAt > 0 && expiresAt <= now) || !orderSnap.exists || terminalOrder) {
+      await releaseCommunityRedemption(redemptionDoc.id, 'promotion_deleted_cleanup');
+      continue;
+    }
+    liveReservations.push(redemptionDoc);
+  }
+  if (liveReservations.length > 0) {
+    return NextResponse.json({ error: 'No se puede eliminar: hay un pago todavía pendiente que está usando esta promoción. Cuando el intento venza o se resuelva, podrás eliminarla.' }, { status: 409 });
+  }
+
+  const usageSnapshot = await db.collection('communityPromotionUsage')
+    .where('kind', '==', kind)
+    .where('promotionId', '==', id)
+    .get();
+  for (let offset = 0; offset < usageSnapshot.docs.length; offset += 400) {
+    const batch = db.batch();
+    usageSnapshot.docs.slice(offset, offset + 400).forEach((usageDoc) => batch.delete(usageDoc.ref));
+    await batch.commit();
+  }
+  // Confirmed redemption and member-history documents are immutable snapshots;
+  // they remain readable even after deleting the promotion configuration.
   await ref.delete();
   return NextResponse.json({ ok: true });
 }

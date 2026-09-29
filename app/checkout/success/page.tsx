@@ -331,7 +331,7 @@ export default async function CheckoutSuccessPage({
             <div className="relative mx-auto flex max-w-lg flex-col items-center">
               <div className="flex h-16 w-16 items-center justify-center rounded-2xl bg-white/15 ring-1 ring-white/25 shadow-lg shadow-black/10">{icon}</div>
               <p className="mt-5 text-[11px] font-bold uppercase tracking-[0.2em] text-white/70">{isSuccessfulState ? 'Explorarg · Compra segura' : 'Estado de tu compra'}</p>
-              <h1 className="mt-2 text-3xl font-bold tracking-tight sm:text-4xl">{orderId ? (heading?.title ?? 'Tu compra') : '¡Compra confirmada!'}</h1>
+              <h1 className="mt-2 text-3xl font-bold tracking-tight sm:text-4xl text-white">{orderId ? (heading?.title ?? 'Tu compra') : '¡Compra confirmada!'}</h1>
               <p className="mt-3 max-w-md text-sm leading-6 text-white/80">{orderId ? (heading?.subtitle ?? 'Estamos verificando el estado del pago.') : 'Tu pago se procesó correctamente. Ya estamos preparando los detalles de tu reserva.'}</p>
             </div>
           </section>
@@ -375,23 +375,23 @@ export default async function CheckoutSuccessPage({
             />
           ) : (hasSession ? <SuccessVerification sessionId={sessionId} /> : null)}
 
-          <div className="mt-5 flex flex-col gap-3 sm:flex-row sm:justify-center">
-            <Button asChild className="gap-2">
-              <Link href={whatsappHref} target="_blank" rel="noopener noreferrer">
+          <div className="mt-5 grid w-full grid-cols-1 gap-3 sm:flex sm:flex-wrap sm:justify-center">
+            <Button asChild variant="success" className="h-12 w-full justify-center gap-2 rounded-xl bg-[#20A464] px-5 text-sm font-bold text-white shadow-sm hover:bg-[#188653] sm:w-auto sm:min-w-[190px]">
+              <Link className="flex w-full items-center justify-center gap-2" href={whatsappHref} target="_blank" rel="noopener noreferrer">
                 <MessageCircle className="h-4 w-4" />
                 Escribir por WhatsApp
               </Link>
             </Button>
             {slug && (
-              <Button asChild variant="outline" className="gap-2">
-                <Link href={`/paquete/${slug}`}>
+              <Button asChild variant="outline" className="h-12 w-full justify-center gap-2 rounded-xl px-5 text-sm font-semibold sm:w-auto sm:min-w-[160px]">
+                <Link className="flex w-full items-center justify-center gap-2" href={`/paquete/${slug}`}>
                   Ver paquete
                   <ArrowRight className="h-4 w-4" />
                 </Link>
               </Button>
             )}
-            <Button asChild variant="outline">
-              <Link href="/">Ir al inicio</Link>
+            <Button asChild variant="outline" className="h-12 w-full justify-center rounded-xl px-5 text-sm font-semibold sm:w-auto sm:min-w-[150px]">
+              <Link className="flex w-full items-center justify-center" href="/">Ir al inicio</Link>
             </Button>
           </div>
         </div>

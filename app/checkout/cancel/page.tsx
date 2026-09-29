@@ -53,10 +53,10 @@ export default async function CheckoutCancelPage({
               </ul>
             </div>
 
-            <div className="mt-8 flex flex-col gap-3 sm:flex-row sm:flex-wrap sm:justify-center">
+            <div className="mt-8 grid w-full grid-cols-1 gap-3 sm:flex sm:flex-wrap sm:justify-center">
               {slug && (
-                <Button asChild className="w-full justify-center gap-2 sm:w-auto">
-                  <Link href={`/paquete/${slug}`}>
+                <Button asChild variant="outline" className="h-12 w-full justify-center gap-2 rounded-xl px-5 text-sm font-semibold sm:w-auto sm:min-w-[170px]">
+                  <Link className="flex w-full items-center justify-center gap-2" href={`/paquete/${slug}`}>
                     <ArrowLeft className="h-4 w-4" />
                     Volver al paquete
                   </Link>
@@ -64,16 +64,16 @@ export default async function CheckoutCancelPage({
               )}
               <Button
                 asChild
-                variant="outline"
-                className="w-full justify-center gap-2 sm:w-auto"
+                variant="success"
+                className="h-12 w-full justify-center gap-2 rounded-xl bg-[#20A464] px-5 text-sm font-bold text-white shadow-sm hover:bg-[#188653] sm:w-auto sm:min-w-[190px]"
               >
-                <Link href={whatsappHref} target="_blank" rel="noopener noreferrer">
+                <Link className="flex w-full items-center justify-center gap-2" href={whatsappHref} target="_blank" rel="noopener noreferrer">
                   <MessageCircle className="h-4 w-4" />
                   Escribir por WhatsApp
                 </Link>
               </Button>
-              <Button asChild variant="outline" className="w-full justify-center sm:w-auto">
-                <Link href="/">Ir al inicio</Link>
+              <Button asChild variant="outline" className="h-12 w-full justify-center rounded-xl px-5 text-sm font-semibold sm:w-auto sm:min-w-[150px]">
+                <Link className="flex w-full items-center justify-center" href="/">Ir al inicio</Link>
               </Button>
             </div>
           </div>

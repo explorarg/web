@@ -44,9 +44,11 @@ export default function ComunidadAdminPage() {
   const request = useCallback(async (url: string, init?: RequestInit) => {
     const user = getAuthInstance().currentUser;
     if (!user) throw new Error('La sesión de administración expiró.');
-    const token = await user.getIdToken();
-    const response = await fetch(url, { ...init, headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}`, ...(init?.headers ?? {}) }, cache: 'no-store' });
-    const result = await response.json();
+    const send = (token: string) => fetch(url, { ...init, headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}`, ...(init?.headers ?? {}) }, cache: 'no-store' });
+    let response = await send(await user.getIdToken());
+    // Refresh an expired ID token instead of interrupting the signed-in admin session.
+    if (response.status === 401) response = await send(await user.getIdToken(true));
+    const result = await response.json().catch(() => ({}));
     if (!response.ok) throw new Error(result.error ?? 'No se pudo completar la operación.');
     return result;
   }, []);
@@ -119,7 +121,10 @@ export default function ComunidadAdminPage() {
       await request('/api/admin/comunidad', { method: 'DELETE', body: JSON.stringify({ kind, id: entry.id }) });
       toast.success('Eliminado correctamente.');
       await load();
-    } catch (error) { toast.error(error instanceof Error ? error.message : 'No se pudo eliminar.'); }
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : 'No se pudo eliminar.');
+      void load();
+    }
   }
 
   const entries = tab === 'benefit' ? data.beneficios : data.cupones;
