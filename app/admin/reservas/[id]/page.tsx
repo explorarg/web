@@ -1672,6 +1672,13 @@ export default function ReservaDetailPage() {
                     </p>
                   </div>
                   <div className="grid grid-cols-2 gap-2">
+                    {Number((reserva as any).communityDiscountAmount ?? 0) > 0 && (
+                      <div className="col-span-2 rounded-xl border border-emerald-200 bg-emerald-50 p-2.5">
+                        <p className="text-[10px] uppercase tracking-widest text-emerald-700">Beneficio / descuento aplicado</p>
+                        <p className="mt-0.5 text-[13px] font-semibold text-emerald-900">{(reserva as any).communityDiscount?.nombre || 'Promoción de comunidad'}{(reserva as any).communityPromotionCode ? ` · Código ${(reserva as any).communityPromotionCode}` : ''}</p>
+                        <p className="mt-0.5 text-xs text-emerald-800">Ahorro en esta reserva: {formatAmount(Number((reserva as any).communityDiscountAmount), reserva.currency)}</p>
+                      </div>
+                    )}
                     <div className="rounded-xl bg-gray-50/80 p-2 ring-1 ring-gray-100">
                       <p className="text-[10px] uppercase tracking-widest text-gray-500">Fecha</p>
                       <p className="mt-0.5 text-[13px] font-semibold leading-5 text-gray-900">

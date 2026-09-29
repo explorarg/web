@@ -32,6 +32,10 @@ type Purchase = {
   id: string;
   orderId: string;
   amountCents: number;
+  discountCents: number;
+  discountName: string | null;
+  promotionCode: string | null;
+  originalAmountCents: number;
   currency: string;
   reservationCount: number;
   packages: Array<{ title: string; date?: string; people?: number }>;
@@ -268,7 +272,7 @@ function Field({ label, value, onChange, placeholder, required }: { label: strin
 
 function PurchaseRow({ purchase, detailed = false }: { purchase: Purchase; detailed?: boolean }) {
   const title = purchase.packages?.map((item) => item.title).filter(Boolean).join(' + ') || `${purchase.reservationCount} reserva${purchase.reservationCount === 1 ? '' : 's'}`;
-  return <div className="flex flex-col justify-between gap-3 py-4 sm:flex-row sm:items-center"><div className="flex min-w-0 items-start gap-3"><span className="mt-0.5 rounded-xl bg-[#EFF8F7] p-2.5 text-[#278B8D]"><MapPinned className="h-4 w-4" /></span><div className="min-w-0"><p className="truncate font-semibold text-[#18333E]">{title}</p><p className="mt-1 text-xs text-slate-500">{dateLabel(purchase.recordedAt)} · {purchase.reservationCount} reserva{purchase.reservationCount === 1 ? '' : 's'}</p>{detailed && <p className="mt-1 text-xs text-slate-400">Operación {purchase.orderId.slice(0, 12) || 'Explorarg'}</p>}</div></div><div className="pl-12 text-sm font-semibold text-[#18333E] sm:pl-0 sm:text-right">{amount(purchase.amountCents, purchase.currency)}<p className="mt-1 text-xs font-normal text-slate-500">Pago confirmado</p></div></div>;
+  return <div className="flex flex-col justify-between gap-3 py-4 sm:flex-row sm:items-center"><div className="flex min-w-0 items-start gap-3"><span className="mt-0.5 rounded-xl bg-[#EFF8F7] p-2.5 text-[#278B8D]"><MapPinned className="h-4 w-4" /></span><div className="min-w-0"><p className="truncate font-semibold text-[#18333E]">{title}</p><p className="mt-1 text-xs text-slate-500">{dateLabel(purchase.recordedAt)} · {purchase.reservationCount} reserva{purchase.reservationCount === 1 ? '' : 's'}</p>{detailed && <p className="mt-1 text-xs text-slate-400">Operación {purchase.orderId.slice(0, 12) || 'Explorarg'}</p>}{purchase.discountCents > 0 && <p className="mt-2 text-xs font-medium text-[#187F80]">{purchase.discountName || 'Beneficio aplicado'}{purchase.promotionCode ? ` · Código ${purchase.promotionCode}` : ''}: −{amount(purchase.discountCents, purchase.currency)}</p>}</div></div><div className="pl-12 text-sm font-semibold text-[#18333E] sm:pl-0 sm:text-right">{amount(purchase.amountCents, purchase.currency)}<p className="mt-1 text-xs font-normal text-slate-500">Pago confirmado</p>{purchase.discountCents > 0 && <p className="mt-1 text-xs font-normal text-slate-500">Antes del descuento: {amount(purchase.originalAmountCents, purchase.currency)}</p>}</div></div>;
 }
 
 function BenefitRow({ benefit, large = false }: { benefit: AvailableBenefit; large?: boolean }) {

@@ -8,6 +8,10 @@ export async function recordCommunityPurchase(input: {
   orderId: string;
   paymentId: string;
   amountCents: number;
+  discountCents?: number;
+  discountName?: string | null;
+  promotionCode?: string | null;
+  originalAmountCents?: number;
   currency: string;
   reservationCount: number;
   packages?: Array<{ title: string; date?: string; people?: number }>;
@@ -47,6 +51,10 @@ export async function recordCommunityPurchase(input: {
       orderId,
       paymentId: String(input.paymentId),
       amountCents: amount,
+      discountCents: Math.max(0, Math.round(input.discountCents ?? 0)),
+      discountName: String(input.discountName ?? '').trim() || null,
+      promotionCode: String(input.promotionCode ?? '').trim().toUpperCase() || null,
+      originalAmountCents: Math.max(amount, Math.round(input.originalAmountCents ?? amount)),
       currency,
       reservationCount: count,
       packages: (input.packages ?? []).slice(0, 50),

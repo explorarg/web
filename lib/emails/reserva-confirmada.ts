@@ -13,6 +13,9 @@ type ReservaEmailData = {
   peopleLabel: string;
   seatsLabel?: string;
   amountFormatted: string;
+  discountName?: string;
+  discountAmountFormatted?: string;
+  promotionCode?: string;
   reservationCode?: string;
   lookupUrl?: string;
   sessionId: string;
@@ -32,6 +35,9 @@ export function buildClienteCompraConfirmadaHtml(data: ReservaEmailData): string
     peopleLabel,
     seatsLabel,
     amountFormatted,
+    discountName,
+    discountAmountFormatted,
+    promotionCode,
     reservationCode,
     lookupUrl,
     sessionId,
@@ -90,6 +96,7 @@ export function buildClienteCompraConfirmadaHtml(data: ReservaEmailData): string
           </tr>`
               : ''
           }
+          ${discountName && discountAmountFormatted ? `<tr><td style="padding: 10px 0; font-size: 0.875rem; color: #0B6E4F; border-bottom: 1px solid #e2e8f0;">${discountName}${promotionCode ? ` · Código ${promotionCode}` : ''}</td><td style="padding: 10px 0; font-size: 0.9375rem; font-weight: 700; color: #0B6E4F; text-align: right; border-bottom: 1px solid #e2e8f0;">− ${discountAmountFormatted}</td></tr>` : ''}
           <tr>
             <td style="padding: 10px 0; font-size: 0.875rem; color: #64748b; border-bottom: 1px solid #e2e8f0;">Monto</td>
             <td style="padding: 10px 0; font-size: 1rem; font-weight: 800; color: #059669; text-align: right; border-bottom: 1px solid #e2e8f0;">${amountFormatted}</td>
@@ -140,7 +147,7 @@ export function buildClienteCompraConfirmadaHtml(data: ReservaEmailData): string
 }
 
 export function buildClienteCompraConfirmadaText(data: ReservaEmailData): string {
-  const { customerName, experienceTitle, dateFormatted, peopleLabel, seatsLabel, amountFormatted, sessionId, reservationCode, lookupUrl } = data;
+  const { customerName, experienceTitle, dateFormatted, peopleLabel, seatsLabel, amountFormatted, discountName, discountAmountFormatted, promotionCode, sessionId, reservationCode, lookupUrl } = data;
   const saludo = customerName ? `Hola ${customerName},` : 'Hola,';
   return [
     `COMPRA CONFIRMADA - ${SITE_NAME}`,
@@ -153,6 +160,7 @@ export function buildClienteCompraConfirmadaText(data: ReservaEmailData): string
     `Fecha: ${dateFormatted}`,
     `Pasajeros: ${peopleLabel}`,
     ...(seatsLabel ? [`Butacas: ${seatsLabel}`] : []),
+    ...(discountName && discountAmountFormatted ? [`Descuento aplicado: ${discountName}${promotionCode ? ` (código ${promotionCode})` : ''} · Ahorro: ${discountAmountFormatted}`] : []),
     `Monto: ${amountFormatted}`,
     `Código: ${reservationCode || sessionId}`,
     '',

@@ -227,6 +227,9 @@ export default async function CheckoutSuccessPage({
   const dateLabel = formatDateLabel(resolvedDate);
   const orderAmount = typeof order?.amountTotal === 'number' ? order.amountTotal : 0;
   const orderCurrency = order?.currency ? String(order.currency).toUpperCase() : currency;
+  const orderDiscount = order?.communityDiscount ?? null;
+  const orderDiscountAmount = Math.max(0, Number(orderDiscount?.montoDescuento ?? order?.items?.reduce((sum: number, item: any) => sum + Number(item?.communityDiscountAmount ?? 0), 0) ?? 0));
+  const orderPromotionCode = String(order?.communityPromotionCode ?? '').trim();
   const amountLabel = orderId ? (orderAmount ? formatCurrency(orderAmount, orderCurrency) : 'Por confirmar') : (amount ? formatCurrency(amount, currency) : 'Por confirmar');
   const orderDisplayStatus = resolveOrderDisplayStatus({
     orderStatus: order?.status,
@@ -424,6 +427,12 @@ export default async function CheckoutSuccessPage({
                   <p className="mt-1 font-semibold text-gray-900">{amountLabel}</p>
                   {originalPackageAmount !== null ? (
                     <p className="mt-1 text-xs text-gray-500">Precio original del paquete: {formatCurrency(originalPackageAmount, orderCurrency)}</p>
+                  ) : null}
+                  {orderDiscountAmount > 0 ? (
+                    <div className="mt-2 rounded-lg bg-emerald-50 px-3 py-2 text-xs text-emerald-800">
+                      <p className="font-semibold">{String(orderDiscount?.nombre ?? 'Beneficio aplicado')}{orderPromotionCode ? ` · Código ${orderPromotionCode}` : ''}</p>
+                      <p className="mt-0.5">Descuento aplicado: −{formatCurrency(orderDiscountAmount, orderCurrency)}</p>
+                    </div>
                   ) : null}
                   {singlePassengerSurcharge.applies ? (
                     <p className="mt-1 text-xs text-gray-500">
