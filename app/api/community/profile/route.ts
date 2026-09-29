@@ -83,6 +83,8 @@ export async function POST(request: Request) {
   if (apellido.length > 0 && apellido.length < 2) return NextResponse.json({ error: 'El apellido debe tener al menos 2 caracteres.' }, { status: 400 });
 
   const ref = db.collection('usuarios').doc(decoded.uid);
+  const deletedProfile = await db.collection('communityDeletedUsers').doc(decoded.uid).get();
+  if (deletedProfile.exists) return NextResponse.json({ error: 'Esta cuenta fue eliminada. Creá una cuenta nueva para volver a usar la comunidad.' }, { status: 410 });
   const snapshot = await ref.get();
   if (snapshot.exists) {
     // No permitir que el registro reescriba métricas, tier, rol ni fecha de alta.

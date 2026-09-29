@@ -733,8 +733,6 @@ export default function CheckoutClient(props: CheckoutClientProps) {
           customerPhone: form.customerPhone.trim() || undefined,
           customerDocument: form.customerDocument.trim() || undefined,
           customerBirthDate: form.customerBirthDate.trim() || undefined,
-          ...(form.roomType ? { roomType: form.roomType } : {}),
-          ...(form.roomSelection.length > 0 ? { roomSelection: form.roomSelection } : {}),
           customerComments: form.customerComments.trim() || undefined,
           passengerDetails: sanitizedPassengerDetails,
           ...(couponCode.trim() ? { couponCode: couponCode.trim().toUpperCase() } : {}),
@@ -781,16 +779,24 @@ export default function CheckoutClient(props: CheckoutClientProps) {
     const timer = window.setTimeout(async () => {
       try {
         const token = await communityUser.getIdToken();
-        const common = {
-          customerEmail: communityUser.email ?? form.customerEmail.trim(),
-          ...(form.roomType ? { roomType: form.roomType } : {}),
-          ...(form.roomSelection.length > 0 ? { roomSelection: form.roomSelection } : {}),
-          ...(couponCode.trim() ? { couponCode: couponCode.trim().toUpperCase() } : {}),
-          previewOnly: true,
-        };
         const checkout = isCartMode
-          ? { ...common, cartId: props.cartId }
-          : { ...common, slug: experience?.slug, packageId: experience?.id, date, people };
+          ? {
+              cartId: props.cartId,
+              customerEmail: communityUser.email?.trim().toLowerCase(),
+              ...(couponCode.trim() ? { couponCode: couponCode.trim().toUpperCase() } : {}),
+              previewOnly: true,
+            }
+          : {
+              customerEmail: communityUser.email?.trim().toLowerCase(),
+              ...(form.roomType ? { roomType: form.roomType.trim() } : {}),
+              ...(form.roomSelection.length > 0 ? { roomSelection: form.roomSelection } : {}),
+              ...(couponCode.trim() ? { couponCode: couponCode.trim().toUpperCase() } : {}),
+              slug: experience?.slug,
+              packageId: experience?.id,
+              date,
+              people,
+              previewOnly: true,
+            };
         const response = await fetch('/api/mercadopago/preference', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
