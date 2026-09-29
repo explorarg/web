@@ -25,6 +25,8 @@ import {
 import { getReservationExtrasAmount, getReservationOfficialBaseAmount } from '@/lib/reservas/pricing';
 import { buildDefaultEmailDelivery, buildQueuedEmailDelivery } from '@/lib/sales/status';
 import { buildReservationPricingSnapshot } from '@/lib/sales/orchestrator';
+import { recordCommunityPurchase } from '@/lib/community/purchases';
+import { confirmCommunityRedemption, extendCommunityRedemption, releaseCommunityRedemption } from '@/lib/community/redemptions';
 import { resolveDepartureConfig } from '@/lib/packages/resolve-departure';
 import {
   Timestamp,
@@ -96,6 +98,13 @@ function buildNotificationFromRequest(params: {
       id: paymentId,
     },
   };
+}
+
+function getPendingPaymentExpiresAt() {
+  const raw = process.env.PENDING_HOLD_MINUTES;
+  const parsed = raw ? parseInt(raw, 10) : NaN;
+  const minutes = Number.isFinite(parsed) && parsed >= 5 && parsed <= 1440 ? parsed : 60;
+  return new Date(Date.now() + minutes * 60 * 1000);
 }
 
 function toMillis(value: unknown): number {
@@ -731,7 +740,11 @@ export async function POST(request: Request) {
                 depositPercentAdults: depositPercentAdults !== null ? depositPercentAdults : null,
                 depositPercentMinors: depositPercentMinors !== null ? depositPercentMinors : null,
                 baseSubtotalAmount,
+                originalBaseSubtotalAmount: Number((it as any).originalBaseSubtotalAmount ?? baseSubtotalAmount),
                 extrasTotalAmount,
+                communityDiscountAmount: Number((it as any).communityDiscountAmount ?? 0),
+                communityUserId: String(orderData?.communityUserId ?? intentData.communityUserId ?? '') || null,
+                communityDiscount: intentData.communityDiscount ?? orderData?.communityDiscount ?? null,
                 amountTotal: amountTotalItem || Math.round(paymentInfo.transaction_amount * 100),
                 currency: currency || paymentInfo.currency_id || 'ars',
                 paymentMethod: 'mercadopago',
@@ -1144,6 +1157,29 @@ export async function POST(request: Request) {
           }).catch(() => {});
         }
 
+        const resolvedRedemptionId = String(orderData?.communityRedemptionId ?? intentData.communityRedemptionId ?? '');
+        let confirmedReservationIds: string[] = [];
+        if (orderRef && resolvedRedemptionId) {
+          const finalOrderSnap = await getDoc(orderRef);
+          const finalOrder: any = finalOrderSnap.exists() ? finalOrderSnap.data() : {};
+          confirmedReservationIds = Array.isArray(finalOrder.reservationIds) ? finalOrder.reservationIds.map(String) : [];
+          if (isApproved) await confirmCommunityRedemption(resolvedRedemptionId, String(paymentId), confirmedReservationIds);
+          else if (isRejected) await releaseCommunityRedemption(resolvedRedemptionId, 'payment_rejected');
+          else if (isPixPending) await extendCommunityRedemption(resolvedRedemptionId, getPendingPaymentExpiresAt());
+        }
+
+        if (isApproved && intentData.communityUserId) {
+          await recordCommunityPurchase({
+            uid: String(intentData.communityUserId),
+            orderId: String(orderId || intentId || paymentId),
+            paymentId: String(paymentId),
+            amountCents: Number(intentData.amountTotal ?? Math.round((paymentInfo.transaction_amount ?? 0) * 100)),
+            currency: String(intentData.currency ?? paymentInfo.currency_id ?? 'ars'),
+            reservationCount: cartItems.filter((item: any) => Boolean(item.packageId || item.experienceId)).length,
+            packages: cartItems.map((item: any) => ({ title: String(item.packageTitle ?? item.experienceTitle ?? 'Paquete Explorarg'), date: String(item.date ?? ''), people: Number(item.people ?? 0) })),
+          });
+        }
+
         await recordMPNotification({
           notificationId,
           type: notification.type,
@@ -1342,6 +1378,11 @@ export async function POST(request: Request) {
               typeof (intentData as any).baseSubtotalAmount === 'number'
                 ? Number((intentData as any).baseSubtotalAmount)
                 : null,
+            originalBaseSubtotalAmount: typeof (intentData as any).originalBaseSubtotalAmount === 'number'
+              ? Number((intentData as any).originalBaseSubtotalAmount)
+              : (intentData as any).baseSubtotalAmount ?? null,
+            communityDiscount: intentData.communityDiscount ?? null,
+            communityUserId: intentData.communityUserId ?? null,
             extrasTotalAmount:
               typeof (intentData as any).extrasTotalAmount === 'number'
                 ? Number((intentData as any).extrasTotalAmount)
@@ -1561,6 +1602,25 @@ export async function POST(request: Request) {
           hadEmailAdmin: emailAdminSnap.exists(),
         };
       });
+
+      const redemptionOrderId = String(intentData.redemptionOrderId ?? '');
+      if (redemptionOrderId) {
+        if (isApproved) await confirmCommunityRedemption(redemptionOrderId, String(paymentId), [reservationId]);
+        else if (isPaymentRejected(paymentStatus)) await releaseCommunityRedemption(redemptionOrderId, 'payment_rejected');
+        else if (isPixPending) await extendCommunityRedemption(redemptionOrderId, getPendingPaymentExpiresAt());
+      }
+
+      if (isApproved && intentData.communityUserId) {
+        await recordCommunityPurchase({
+          uid: String(intentData.communityUserId),
+          orderId: String(redemptionOrderId || intentId || paymentId),
+          paymentId: String(paymentId),
+          amountCents: Number(amountTotal || Math.round((paymentInfo.transaction_amount ?? 0) * 100)),
+          currency: String(currency || paymentInfo.currency_id || 'ars'),
+          reservationCount: 1,
+          packages: [{ title: String(finalPackageTitle || packageTitle || 'Paquete Explorarg'), date: String(date ?? ''), people: Number(people ?? 1) }],
+        });
+      }
 
       console.log('[mercadopago-webhook] Reserva procesada', {
         reservationId,

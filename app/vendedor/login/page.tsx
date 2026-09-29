@@ -2,21 +2,19 @@
 
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
-import Image from 'next/image';
 import { signInWithEmailAndPassword, updatePassword } from 'firebase/auth';
 import { getAuthInstance } from '@/lib/firebase';
 import { useAuth } from '@/hooks/useAuth';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Card, CardContent } from '@/components/ui/card';
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import VendorPasswordResetRequestDialog from '@/components/vendor/VendorPasswordResetRequestDialog';
-import { Eye, EyeOff, Loader2, AlertTriangle, Lock } from 'lucide-react';
+import { Eye, EyeOff, Loader2, AlertTriangle, Lock, BriefcaseBusiness } from 'lucide-react';
 import { collection, doc, getDocs, limit, query, updateDoc, where } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
 import { toast } from 'sonner';
-import { getBrandLogoSrc, isRemoteUrl, renderTemplate, siteConfig } from '@/lib/siteConfig';
+import { CommunityAuthShell } from '@/components/auth/CommunityAuthShell';
 
 export default function VendorLoginPage() {
   const [email, setEmail] = useState('');
@@ -31,8 +29,6 @@ export default function VendorLoginPage() {
   const [vendorDocId, setVendorDocId] = useState<string | null>(null);
   const router = useRouter();
   const { user } = useAuth();
-  const logoSrc = getBrandLogoSrc();
-  const logoAlt = renderTemplate(siteConfig.branding.logo.altTextTemplate || '{{siteName}} Logo');
 
   useEffect(() => {
     const check = async () => {
@@ -69,7 +65,7 @@ export default function VendorLoginPage() {
         router.replace('/vendedor');
       }
     } catch (error) {
-      let description = 'Error de autenticación';
+      let description = 'No se pudo iniciar sesión. Revisá tus datos e intentá nuevamente.';
       if (error && typeof error === 'object' && 'code' in error) {
         const code = (error as any).code as string;
         switch (code) {
@@ -78,20 +74,15 @@ export default function VendorLoginPage() {
           case 'auth/wrong-password':
             description = 'Email o contraseña incorrectos';
             break;
-          case 'auth/invalid-api-key':
-            description = 'Configuración de Firebase inválida (API key)';
-            break;
           case 'auth/user-disabled':
-            description = 'Cuenta deshabilitada';
+            description = 'La cuenta no está habilitada. Contactá al equipo de Explorarg.';
             break;
           case 'auth/network-request-failed':
-            description = 'Error de conexión. Verificá tu internet';
+            description = 'No pudimos conectarnos. Revisá tu conexión e intentá nuevamente.';
             break;
           default:
             description = 'No se pudo iniciar sesión';
         }
-        // eslint-disable-next-line no-console
-        console.warn('[VendorLogin] auth error:', code);
       }
       toast.error(description);
     } finally {
@@ -139,23 +130,8 @@ export default function VendorLoginPage() {
   };
 
   return (
-    <div className="min-h-screen bg-[#2BB8BF] px-4 py-10">
-      <div className="mx-auto flex min-h-screen max-w-md items-center justify-center">
-        <Card className="w-full overflow-hidden rounded-[28px] border-0 bg-white shadow-[0_28px_90px_rgba(15,23,42,0.20)]">
-          <CardContent className="p-7 sm:p-8">
-            <div className="mb-8 flex flex-col items-center text-center">
-              <div className="mb-5 flex h-16 w-16 items-center justify-center rounded-2xl bg-[#2BB8BF] p-3 shadow-[0_14px_34px_rgba(43,184,191,0.35)]">
-                {isRemoteUrl(logoSrc) ? (
-                  <img src={logoSrc} alt={logoAlt} className="h-full w-full object-contain" />
-                ) : (
-                  <Image src={logoSrc} alt={logoAlt} width={48} height={48} className="h-full w-full object-contain" />
-                )}
-              </div>
-              <div className="space-y-1">
-                <p className="text-xs font-semibold uppercase tracking-[0.24em] text-[#2BB8BF]">Vendedor</p>
-                <h2 className="text-2xl font-semibold tracking-tight text-slate-950">Ingresar</h2>
-              </div>
-            </div>
+    <>
+      <CommunityAuthShell icon={BriefcaseBusiness} title="Portal de vendedores" subtitle="Ingresá para consultar y gestionar tus reservas de Explorarg.">
 
             <form onSubmit={handleLogin} className="space-y-5">
               <div className="space-y-2">
@@ -167,7 +143,7 @@ export default function VendorLoginPage() {
                   type="email"
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
-                  placeholder="vendedor@explorarg.ar"
+                  placeholder="tu@email.com"
                   required
                   disabled={loading}
                   className="h-12 rounded-2xl border-slate-200 bg-slate-50 px-4 text-base shadow-none focus:border-[#2BB8BF] focus:ring-[#2BB8BF]/20 disabled:opacity-50"
@@ -236,9 +212,7 @@ export default function VendorLoginPage() {
                 Olvidé mi contraseña
               </button>
             </div>
-          </CardContent>
-        </Card>
-      </div>
+      </CommunityAuthShell>
 
       <Dialog open={mustChangeOpen} onOpenChange={(o) => o || setMustChangeOpen(false)}>
         <DialogContent className="sm:max-w-md">
@@ -298,6 +272,6 @@ export default function VendorLoginPage() {
         onOpenChange={setResetOpen}
         initialEmail={email}
       />
-    </div>
+    </>
   );
 }

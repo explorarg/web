@@ -5,7 +5,7 @@ export type VentaEmailJobType =
   | 'cliente_voucher_48hs'
   | 'cliente_confirmacion'
   | 'admin_aviso';
-export type VentaEmailJobStatus = 'pending' | 'sending' | 'sent' | 'failed';
+export type VentaEmailJobStatus = 'pending' | 'sending' | 'sent' | 'failed' | 'dead';
 
 export function emailDeliveryPathForJobType(type: VentaEmailJobType): string {
   if (type === 'admin_aviso') return 'emailDelivery.adminNotification';

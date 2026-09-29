@@ -2,7 +2,7 @@ import { MetadataRoute } from 'next';
 import { collection, getDocs, query, orderBy as firestoreOrderBy } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
 
-const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || 'https://viaggiotur.vercel.app';
+const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || 'https://explorarg.com';
 
 export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   const routes: MetadataRoute.Sitemap = [

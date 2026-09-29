@@ -2,21 +2,19 @@
 
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
-import Image from 'next/image';
 import { signInWithEmailAndPassword } from 'firebase/auth';
 import { getAuthInstance } from '@/lib/firebase';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Checkbox } from '@/components/ui/checkbox';
-import { Card, CardContent } from '@/components/ui/card';
 import { toast } from 'sonner';
-import { Eye, EyeOff, Loader2, AlertTriangle } from 'lucide-react';
+import { Eye, EyeOff, Loader2, AlertTriangle, ShieldCheck } from 'lucide-react';
 import { SessionManager } from '@/lib/auth/sessionManager';
 import { configureAuthPersistence, validateAdminDomain } from '@/lib/auth/authConfig';
 import { useAuth } from '@/hooks/useAuth';
 import { ADMIN_EMAIL } from '@/lib/constants';
-import { getBrandLogoSrc, isRemoteUrl, renderTemplate, siteConfig } from '@/lib/siteConfig';
+import { CommunityAuthShell } from '@/components/auth/CommunityAuthShell';
 
 export default function LoginPage() {
   const [email, setEmail] = useState('');
@@ -31,8 +29,6 @@ export default function LoginPage() {
   const router = useRouter();
   const { user } = useAuth();
   const [sessionManager] = useState(() => SessionManager.getInstance());
-  const logoSrc = getBrandLogoSrc();
-  const logoAlt = renderTemplate(siteConfig.branding.logo.altTextTemplate || '{{siteName}} Logo');
 
   // Verificar si el usuario ya está autenticado
   useEffect(() => {
@@ -44,9 +40,7 @@ export default function LoginPage() {
   // Verificar dominio permitido
   useEffect(() => {
     if (!validateAdminDomain()) {
-      toast.error('Acceso no autorizado', {
-        description: 'Este dominio no está autorizado para el panel admin',
-      });
+      toast.error('No se puede acceder desde este sitio.');
     }
   }, []);
 
@@ -138,14 +132,12 @@ export default function LoginPage() {
       
       router.push('/admin');
     } catch (error) {
-      console.error('Error al iniciar sesión:', error);
-      
       // Registrar intento fallido
       sessionManager.recordLoginAttempt(email, false);
       
       // Determinar mensaje de error
-      const errorMessage = 'Error al iniciar sesión';
-      let errorDescription = 'Verifica tus credenciales';
+      const errorMessage = 'No pudimos iniciar sesión';
+      let errorDescription = 'No se pudo iniciar sesión. Revisá tus datos e intentá nuevamente.';
       
       // Firebase Auth errors have a 'code' property
       if (error && typeof error === 'object' && 'code' in error) {
@@ -157,16 +149,16 @@ export default function LoginPage() {
             errorDescription = 'Email o contraseña incorrectos';
             break;
           case 'auth/too-many-requests':
-            errorDescription = 'Demasiados intentos. Intenta más tarde';
+            errorDescription = 'Hubo varios intentos. Esperá unos minutos y volvé a probar.';
             break;
           case 'auth/user-disabled':
-            errorDescription = 'Cuenta deshabilitada';
+            errorDescription = 'La cuenta no está habilitada. Contactá al equipo de Explorarg.';
             break;
           case 'auth/network-request-failed':
-            errorDescription = 'Error de conexión. Verifica tu internet';
+            errorDescription = 'No pudimos conectarnos. Revisá tu conexión e intentá nuevamente.';
             break;
           default:
-            errorDescription = 'Error de autenticación';
+            errorDescription = 'No se pudo iniciar sesión. Intentá nuevamente.';
         }
       }
       
@@ -198,29 +190,7 @@ export default function LoginPage() {
   };
 
   return (
-    <div className="min-h-screen bg-[#2BB8BF] px-4 py-10">
-      <div className="mx-auto flex min-h-screen max-w-md items-center justify-center">
-        <Card className="w-full overflow-hidden rounded-[28px] border-0 bg-white shadow-[0_28px_90px_rgba(15,23,42,0.20)]">
-          <CardContent className="p-7 sm:p-8">
-            <div className="mb-8 flex flex-col items-center text-center">
-              <div className="mb-5 flex h-16 w-16 items-center justify-center rounded-2xl bg-[#2BB8BF] p-3 shadow-[0_14px_34px_rgba(43,184,191,0.35)]">
-                {isRemoteUrl(logoSrc) ? (
-                  <img src={logoSrc} alt={logoAlt} className="h-full w-full object-contain" />
-                ) : (
-                  <Image
-                    src={logoSrc}
-                    alt={logoAlt}
-                    width={48}
-                    height={48}
-                    className="h-full w-full object-contain"
-                  />
-                )}
-              </div>
-              <div className="space-y-1">
-                <p className="text-xs font-semibold uppercase tracking-[0.24em] text-[#2BB8BF]">Admin</p>
-                <h2 className="text-2xl font-semibold tracking-tight text-slate-950">Ingresar</h2>
-              </div>
-            </div>
+      <CommunityAuthShell icon={ShieldCheck} title="Acceso administrador" subtitle="Ingresá con tu cuenta admin para gestionar Explorarg.">
 
             {isBlocked && (
               <div className="mb-5 flex items-start gap-3 rounded-2xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-800">
@@ -242,7 +212,7 @@ export default function LoginPage() {
                   type="email"
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
-                  placeholder={ADMIN_EMAIL}
+                  placeholder="administracion@explorarg.com"
                   required
                   disabled={loading || isBlocked}
                   className="h-12 rounded-2xl border-slate-200 bg-slate-50 px-4 text-base shadow-none focus:border-[#2BB8BF] focus:ring-[#2BB8BF]/20 disabled:opacity-50"
@@ -314,9 +284,6 @@ export default function LoginPage() {
                 )}
               </Button>
             </form>
-          </CardContent>
-        </Card>
-      </div>
-    </div>
+      </CommunityAuthShell>
   );
 }

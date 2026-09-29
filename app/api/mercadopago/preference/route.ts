@@ -23,6 +23,14 @@ import {
   normalizeRoomSelection,
 } from '@/lib/reservas/room-types';
 import { normalizeTravelerDetails } from '@/lib/reservas/traveler-utils';
+import { adminAuth, getAdminDb } from '@/lib/firebaseAdmin';
+import {
+  CommunityPromotionError,
+  quoteCommunityPromotion,
+  reserveCommunityRedemption,
+  releaseCommunityRedemption,
+} from '@/lib/community/redemptions';
+import { distributeCommunityDiscount } from '@/lib/community/pricing';
 
 export const runtime = 'nodejs';
 const roomTypeSchema = z.string().trim().min(1).max(120);
@@ -61,6 +69,10 @@ const payloadSchema = z.object({
   failureUrl: z.string().url().optional(),
   pendingUrl: z.string().url().optional(),
   referralCode: z.string().max(60).optional(),
+  couponCode: z.string().trim().max(40).optional(),
+  previewOnly: z.boolean().optional(),
+  expectedPromotionId: z.string().max(200).optional(),
+  expectedDiscountCents: z.number().int().nonnegative().optional(),
 }).refine((data) => {
   if (data.cartId) return true;
   return Boolean(data.people && (data.slug || data.packageId));
@@ -200,6 +212,29 @@ function withQueryParams(url: string, params: Record<string, string | number | n
   }
 }
 
+async function resolveCommunityUid(request: Request, customerEmail: string | undefined) {
+  const authorization = request.headers.get('authorization') ?? '';
+  const token = authorization.startsWith('Bearer ') ? authorization.slice(7).trim() : '';
+  if (!token) return { uid: null as string | null, error: null as string | null };
+  if (!adminAuth) return { uid: null, error: 'No se puede validar la sesión de comunidad.' };
+  try {
+    const identity = await adminAuth.verifyIdToken(token);
+    const tokenEmail = String(identity.email ?? '').trim().toLowerCase();
+    if (!tokenEmail || tokenEmail !== String(customerEmail ?? '').trim().toLowerCase()) {
+      return { uid: null, error: 'Iniciá sesión con el mismo email que usás para la reserva.' };
+    }
+    const adminDb = getAdminDb();
+    if (!adminDb) return { uid: null, error: 'El servicio de comunidad no está disponible.' };
+    const profile = await adminDb.collection('usuarios').doc(identity.uid).get();
+    if (!profile.exists || profile.data()?.activo === false) {
+      return { uid: null, error: 'La cuenta de comunidad no está activa.' };
+    }
+    return { uid: identity.uid, error: null };
+  } catch {
+    return { uid: null, error: 'La sesión de comunidad no es válida.' };
+  }
+}
+
 export async function POST(request: Request) {
   if (!mercadopagoEnabled) {
     return NextResponse.json(
@@ -233,6 +268,10 @@ export async function POST(request: Request) {
     successUrl: bodySuccessUrl,
     failureUrl: bodyFailureUrl,
     pendingUrl: bodyPendingUrl,
+    couponCode,
+    previewOnly = false,
+    expectedPromotionId,
+    expectedDiscountCents,
   } = parsed.data;
   const referralCode = parsed.data.referralCode?.trim() || undefined;
   const roomSelection = normalizeRoomSelection((parsed.data as any).roomSelection);
@@ -240,6 +279,12 @@ export async function POST(request: Request) {
     ? deriveLegacyRoomTypeFromSelection(roomSelection)
     : roomType ?? null;
   const fullName = customerName || `${customerFirstName ?? ''} ${customerLastName ?? ''}`.trim();
+  const communityIdentity = await resolveCommunityUid(request, customerEmail);
+  if (communityIdentity.error) return NextResponse.json({ error: communityIdentity.error }, { status: 401 });
+  const communityUserId = communityIdentity.uid;
+  if (couponCode && !communityUserId) {
+    return NextResponse.json({ error: 'Iniciá sesión con tu cuenta de comunidad para usar un cupón.' }, { status: 401 });
+  }
   const passengerDetails = Array.isArray(parsed.data.passengerDetails)
     ? parsed.data.passengerDetails.map((item) => normalizeTravelerDetails(item))
     : null;
@@ -264,13 +309,20 @@ export async function POST(request: Request) {
     const cartStatus = String(cart.status ?? 'active');
 
     const existingOrderId = cart.orderId ? String(cart.orderId) : '';
-    if (existingOrderId) {
+    if (existingOrderId && !previewOnly) {
       const orderSnap = await getDoc(doc(db, 'orders', existingOrderId));
       if (orderSnap.exists()) {
         const order: any = { id: orderSnap.id, ...(orderSnap.data() as any) };
         const initPoint = order?.payment?.initPoint ? String(order.payment.initPoint) : '';
         const preferenceId = order?.payment?.preferenceId ? String(order.payment.preferenceId) : '';
-        if (initPoint && preferenceId) {
+        const orderExpiresAt = toMillis(order.expiresAt);
+        const reusableStatus = ['created', 'checkout_started', 'pending'].includes(String(order.status ?? ''));
+        const orderHoldIsCurrent = orderExpiresAt <= 0 || orderExpiresAt > Date.now();
+        const sameCommunityMember = String(order.communityUserId ?? '') === String(communityUserId ?? '');
+        if (initPoint && preferenceId && reusableStatus && orderHoldIsCurrent && sameCommunityMember) {
+          if (String(order.communityPromotionCode ?? '') !== String(couponCode ?? '').trim().toUpperCase()) {
+            return NextResponse.json({ error: 'Ya hay un pago iniciado para este carrito. Finalizá ese intento o esperá su vencimiento antes de cambiar el cupón.' }, { status: 409 });
+          }
           return NextResponse.json({
             url: initPoint,
             preferenceId,
@@ -282,7 +334,7 @@ export async function POST(request: Request) {
       }
     }
 
-    if (!existingOrderId && cartStatus === 'checkout_started' && cart.checkoutIntentId) {
+    if (!previewOnly && !existingOrderId && cartStatus === 'checkout_started' && cart.checkoutIntentId) {
       const intentId = String(cart.checkoutIntentId);
       const intentSnap = await getDoc(doc(db, 'checkoutIntents', intentId));
       if (intentSnap.exists()) {
@@ -290,7 +342,13 @@ export async function POST(request: Request) {
         const initPoint = intent.mercadoPagoInitPoint ? String(intent.mercadoPagoInitPoint) : '';
         const preferenceId = intent.mercadoPagoPreferenceId ? String(intent.mercadoPagoPreferenceId) : '';
         const extRef = intent.externalReference ? String(intent.externalReference) : `cart-${cartId}`;
-        if (initPoint && preferenceId) {
+        const sameCommunityMember = String(intent.communityUserId ?? '') === String(communityUserId ?? '');
+        const intentExpiresAt = toMillis(intent.expiresAt ?? cart.expiresAt);
+        const intentHoldIsCurrent = intentExpiresAt <= 0 || intentExpiresAt > Date.now();
+        if (initPoint && preferenceId && sameCommunityMember && intentHoldIsCurrent) {
+          if (String(intent.communityPromotionCode ?? '') !== String(couponCode ?? '').trim().toUpperCase()) {
+            return NextResponse.json({ error: 'Ya hay un pago iniciado para este carrito. Finalizá ese intento o esperá su vencimiento antes de cambiar el cupón.' }, { status: 409 });
+          }
           const now = Timestamp.now();
           const newOrderId = doc(collection(db, 'orders')).id;
           await setDoc(
@@ -302,6 +360,10 @@ export async function POST(request: Request) {
               currency: String(intent.currency ?? cart.currency ?? 'ars'),
               amountTotal: Number(intent.amountTotal ?? 0),
               items: Array.isArray(intent.items) ? intent.items : [],
+              communityUserId: intent.communityUserId ?? null,
+              communityDiscount: intent.communityDiscount ?? null,
+              communityRedemptionId: intent.communityRedemptionId ?? null,
+              communityPromotionCode: intent.communityPromotionCode ?? '',
               referral: intent.referral ?? cart.referral ?? null,
               customer: {
           email: intent.customerEmail ?? null,
@@ -362,7 +424,7 @@ export async function POST(request: Request) {
     const fallbackFailureUrl = `${baseUrl}/checkout/cancel?cart=1&cartId=${encodeURIComponent(cartId)}`;
     const failureUrl = safeReturnUrl(bodyFailureUrl, fallbackFailureUrl, baseUrl);
 
-    const itemsSnapshot: any[] = [];
+    let itemsSnapshot: any[] = [];
     let currencyLower: string | null = null;
     let amountTotal = 0;
     let minExpiresMs = Number.POSITIVE_INFINITY;
@@ -567,7 +629,69 @@ export async function POST(request: Request) {
     const currency = currencyLower.toUpperCase();
     const referralToUse = referralCode || (cart.referral?.code ? String(cart.referral.code) : undefined);
 
-    const orderId = existingOrderId || doc(collection(db, 'orders')).id;
+    let promotionQuote = { discount: null, promotion: null } as Awaited<ReturnType<typeof quoteCommunityPromotion>>;
+    if (communityUserId) {
+      try {
+        promotionQuote = await quoteCommunityPromotion({
+          uid: communityUserId,
+          couponCode,
+          orderId: existingOrderId || null,
+          subtotalCents: itemsSnapshot.reduce((sum, item) => sum + Math.max(0, Number(item.baseSubtotalAmount ?? 0)), 0),
+          currency,
+        });
+      } catch (error) {
+        if (error instanceof CommunityPromotionError) return NextResponse.json({ error: error.message, code: error.code }, { status: 400 });
+        throw error;
+      }
+    }
+    if (expectedPromotionId !== undefined && (
+      String(promotionQuote.promotion?.id ?? '') !== expectedPromotionId ||
+      Number(promotionQuote.discount?.montoDescuento ?? 0) !== Number(expectedDiscountCents ?? 0)
+    )) {
+      return NextResponse.json({ error: 'La promoción cambió mientras completabas la compra. Verificala nuevamente antes de pagar.', code: 'promotion_changed' }, { status: 409 });
+    }
+    if (previewOnly) {
+      return NextResponse.json({
+        previewOnly: true,
+        promotion: promotionQuote.promotion,
+        discount: promotionQuote.discount,
+        originalAmountCents: itemsSnapshot.reduce((sum, item) => sum + Number(item.baseSubtotalAmount ?? 0), 0),
+        finalAmountCents: itemsSnapshot.reduce((sum, item) => sum + Number(item.baseSubtotalAmount ?? 0), 0) - Number(promotionQuote.discount?.montoDescuento ?? 0),
+        currency,
+      });
+    }
+
+    // A preference whose hold expired must never be revived with its old reference/id.
+    const orderId = doc(collection(db, 'orders')).id;
+    let communityRedemptionId: string | null = null;
+    let communityDiscount = promotionQuote.discount;
+    if (communityUserId && promotionQuote.promotion && communityDiscount) {
+      try {
+        const reserved = await reserveCommunityRedemption({
+          uid: communityUserId,
+          orderId,
+          promotion: promotionQuote.promotion,
+          subtotalCents: itemsSnapshot.reduce((sum, item) => sum + Math.max(0, Number(item.baseSubtotalAmount ?? 0)), 0),
+          currency,
+          expiresAt: new Date(Number.isFinite(minExpiresMs) ? minExpiresMs : (toMillis(cart.expiresAt) || now.toMillis())),
+          packages: itemsSnapshot.map((item) => ({ id: String(item.packageId), title: String(item.packageTitle), date: String(item.date), people: Number(item.people) })),
+        });
+        communityRedemptionId = reserved.redemptionId;
+        communityDiscount = reserved.discount;
+      } catch (error) {
+        if (error instanceof CommunityPromotionError) return NextResponse.json({ error: error.message, code: error.code }, { status: 409 });
+        throw error;
+      }
+    }
+    if (communityDiscount) {
+      itemsSnapshot = distributeCommunityDiscount(itemsSnapshot, communityDiscount.montoDescuento);
+      amountTotal = itemsSnapshot.reduce((sum, item) => sum + Number(item.subtotalAmount ?? 0), 0);
+    }
+    if (amountTotal < 1) {
+      if (communityRedemptionId) await releaseCommunityRedemption(orderId, 'zero_amount_not_supported');
+      return NextResponse.json({ error: 'El descuento cubre el total. Para completar una reserva sin pago necesitamos habilitar un flujo de confirmación gratuito.' }, { status: 400 });
+    }
+    const communityPromotionCode = promotionQuote.promotion?.kind === 'coupon' ? String(couponCode ?? '').trim().toUpperCase() : '';
     const externalReference = orderExternalReference(orderId);
     const successUrl = withQueryParams(
       safeReturnUrl(bodySuccessUrl, fallbackSuccessUrl, baseUrl),
@@ -601,6 +725,7 @@ export async function POST(request: Request) {
     const intentRef = doc(db, 'checkoutIntents', `order_${orderId}`);
     const orderRef = doc(db, 'orders', orderId);
 
+    try {
     await setDoc(
       orderRef,
       {
@@ -611,6 +736,10 @@ export async function POST(request: Request) {
         amountTotal,
         items: itemsSnapshot,
         referral: referralToUse ? { code: referralToUse } : null,
+        communityUserId,
+        communityDiscount,
+        communityRedemptionId,
+        communityPromotionCode,
         customer: {
           email: customerEmail ?? null,
           name: fullName ?? null,
@@ -649,17 +778,38 @@ export async function POST(request: Request) {
         customerBirthDate: customerBirthDate ?? null,
         customerComments: customerComments ?? null,
         passengerDetails: passengerDetails ?? null,
+        communityDiscount,
+        communityRedemptionId,
+        communityPromotionCode,
         externalReference,
         returnUrls: { successUrl, failureUrl: normalizedFailureUrl, pendingUrl },
         referral: referralToUse ? { code: referralToUse } : null,
+        communityUserId,
         createdAt: now,
         updatedAt: now,
       },
       { merge: true }
     );
+    } catch (error) {
+      if (communityRedemptionId) await releaseCommunityRedemption(orderId, 'checkout_intent_persist_failed').catch(() => {});
+      throw error;
+    }
 
     try {
-      const mpItems = itemsSnapshot.flatMap((it, index) => {
+      const mpItems = communityDiscount
+        ? itemsSnapshot.flatMap((it, index) => [
+            ...(Number(it.baseSubtotalAmount ?? 0) > 0 ? [{
+              currency_id: currency,
+              id: `${it.cartItemId || `item-${index}`}-package-discounted`,
+              title: it.packageTitle,
+              description: `${it.date && it.date !== 'sin-fecha' ? `Salida ${it.date} · ` : ''}Paquete para ${it.people} persona${it.people > 1 ? 's' : ''}`,
+              quantity: 1,
+              unit_price: Number(it.baseSubtotalAmount) / 100,
+              picture_url: it.image ?? undefined,
+            }] : []),
+            ...buildPreferenceExtraItems({ item: it, currency, index }),
+          ])
+        : itemsSnapshot.flatMap((it, index) => {
         const adults = typeof (it as any).peopleAdults === 'number' ? Math.max(0, Number((it as any).peopleAdults) || 0) : it.people;
         const minors = typeof (it as any).peopleMinors === 'number' ? Math.max(0, Number((it as any).peopleMinors) || 0) : 0;
         const unitAdults = typeof (it as any).unitAmountAdults === 'number' ? Math.max(0, Number((it as any).unitAmountAdults) || 0) : it.unitAmount;
@@ -765,6 +915,7 @@ export async function POST(request: Request) {
       });
     } catch (error) {
       const serializedError = serializeUnknownError(error);
+      if (communityRedemptionId) await releaseCommunityRedemption(orderId, 'mercadopago_preference_failed').catch(() => {});
       await updateDoc(intentRef, {
         status: 'failed',
         lastError: JSON.stringify(serializedError),
@@ -865,7 +1016,62 @@ export async function POST(request: Request) {
   }
 
   const baseUrl = getRequestBaseUrl(request);
-  const sessionAmount = computedPricing.subtotalAmount;
+  const originalBaseSubtotal = computedPricing.baseSubtotalAmount;
+  let quote: Awaited<ReturnType<typeof quoteCommunityPromotion>> = { discount: null, promotion: null };
+  if (communityUserId) {
+    try {
+      quote = await quoteCommunityPromotion({ uid: communityUserId, couponCode, subtotalCents: originalBaseSubtotal, currency });
+    } catch (error) {
+      if (error instanceof CommunityPromotionError) return NextResponse.json({ error: error.message, code: error.code }, { status: 400 });
+      throw error;
+    }
+  }
+  if (expectedPromotionId !== undefined && (
+    String(quote.promotion?.id ?? '') !== expectedPromotionId ||
+    Number(quote.discount?.montoDescuento ?? 0) !== Number(expectedDiscountCents ?? 0)
+  )) {
+    return NextResponse.json({ error: 'La promoción cambió mientras completabas la compra. Verificala nuevamente antes de pagar.', code: 'promotion_changed' }, { status: 409 });
+  }
+  if (previewOnly) {
+    return NextResponse.json({
+      previewOnly: true,
+      promotion: quote.promotion,
+      discount: quote.discount,
+      originalAmountCents: originalBaseSubtotal,
+      finalAmountCents: originalBaseSubtotal - Number(quote.discount?.montoDescuento ?? 0),
+      currency,
+    });
+  }
+  const intentRef = doc(collection(db, 'checkoutIntents'));
+  const intentId = intentRef.id;
+  const redemptionOrderId = `direct_${intentId}`;
+  let communityDiscount = quote.discount;
+  let communityRedemptionId: string | null = null;
+  let sessionBaseAmount = originalBaseSubtotal;
+  if (communityUserId && quote.promotion && communityDiscount) {
+    try {
+      const reserved = await reserveCommunityRedemption({
+        uid: communityUserId,
+        orderId: redemptionOrderId,
+        promotion: quote.promotion,
+        subtotalCents: originalBaseSubtotal,
+        currency,
+        expiresAt: new Date(Date.now() + 60 * 60 * 1000),
+        packages: [{ id: paquete.id, title: paquete.titulo, date, people }],
+      });
+      communityRedemptionId = reserved.redemptionId;
+      communityDiscount = reserved.discount;
+      sessionBaseAmount = originalBaseSubtotal - communityDiscount.montoDescuento;
+    } catch (error) {
+      if (error instanceof CommunityPromotionError) return NextResponse.json({ error: error.message, code: error.code }, { status: 409 });
+      throw error;
+    }
+  }
+  const sessionAmount = computedPricing.extrasTotalAmount + sessionBaseAmount;
+  if (sessionAmount < 1) {
+    if (communityRedemptionId) await releaseCommunityRedemption(redemptionOrderId, 'zero_amount_not_supported');
+    return NextResponse.json({ error: 'El descuento cubre el total. Para completar una reserva sin pago necesitamos habilitar un flujo de confirmación gratuito.' }, { status: 400 });
+  }
 
   // Construir URLs de retorno
   const successUrl = withQueryParams(
@@ -895,10 +1101,9 @@ export async function POST(request: Request) {
 
   // Registrar intento de checkout para trazabilidad
   const now = Timestamp.now();
-  const intentRef = doc(collection(db, 'checkoutIntents'));
-  const intentId = intentRef.id;
   const externalReference = `pkg-${paquete.id}-${Date.now()}`;
 
+  try {
   await setDoc(intentRef, {
     status: 'created',
     provider: 'mercadopago',
@@ -909,7 +1114,8 @@ export async function POST(request: Request) {
     people,
     unitPrice,
     selectedExtras: pricedSelectedExtras.length ? pricedSelectedExtras : null,
-    baseSubtotalAmount: computedPricing.baseSubtotalAmount,
+    originalBaseSubtotalAmount: originalBaseSubtotal,
+    baseSubtotalAmount: sessionBaseAmount,
     extrasTotalAmount: computedPricing.extrasTotalAmount,
     amountTotal: sessionAmount,
     currency: currency.toLowerCase(),
@@ -924,6 +1130,11 @@ export async function POST(request: Request) {
     roomSelection: roomSelection.length ? roomSelection : null,
     customerComments: customerComments ?? null,
     passengerDetails: passengerDetails ?? null,
+    communityUserId,
+    communityDiscount,
+    communityRedemptionId,
+    communityPromotionCode: quote.promotion?.kind === 'coupon' ? String(couponCode ?? '').trim().toUpperCase() : '',
+    redemptionOrderId,
     externalReference,
     bookingConfigSnapshot: {
       currency: bc?.currency ?? null,
@@ -941,6 +1152,10 @@ export async function POST(request: Request) {
     createdAt: now,
     updatedAt: now,
   });
+  } catch (error) {
+    if (communityRedemptionId) await releaseCommunityRedemption(redemptionOrderId, 'checkout_intent_persist_failed').catch(() => {});
+    throw error;
+  }
 
   try {
     // Crear preferencia de pago en Mercado Pago
@@ -948,14 +1163,24 @@ export async function POST(request: Request) {
     
     const preferenceResult = await createPreference({
       items: [
-        {
+        ...(communityDiscount
+          ? sessionBaseAmount > 0 ? [{
+              id: `${paquete.id}-package-discounted`,
+              title: paquete.titulo,
+              description: paquete.descripcionCorta ?? `Reserva para ${people} persona${people > 1 ? 's' : ''}`,
+              quantity: 1,
+              unit_price: sessionBaseAmount / 100,
+              currency_id: currency,
+              picture_url: productImage ?? undefined,
+            }] : []
+          : [{
           title: paquete.titulo,
           description: paquete.descripcionCorta ?? `Reserva para ${people} persona${people > 1 ? 's' : ''}`,
           quantity: people,
           unit_price: unitPrice / 100,
           currency_id: currency,
           picture_url: productImage ?? undefined,
-        },
+          }]),
         ...buildPreferenceExtraItems({
           item: {
             selectedExtras: pricedSelectedExtras,
@@ -1005,6 +1230,7 @@ export async function POST(request: Request) {
 
   } catch (error) {
     console.error('[mercadopago-preference]', error);
+    if (communityRedemptionId) await releaseCommunityRedemption(redemptionOrderId, 'mercadopago_preference_failed').catch(() => {});
     
     // Marcar intent como fallido
     await updateDoc(intentRef, {

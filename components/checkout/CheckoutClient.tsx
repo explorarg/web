@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useRef, useMemo } from 'react';
+import { useState, useEffect, useRef, useMemo, useCallback } from 'react';
 import Link from 'next/link';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Button } from '@/components/ui/button';
@@ -22,6 +22,7 @@ import {
   Wallet,
   Landmark,
   Mail,
+  TicketPercent,
   Calendar,
   User
 } from 'lucide-react';
@@ -29,6 +30,8 @@ import type { Experience, ReservationRoomSelection, ReservationRoomType, RoomTyp
 import { Skeleton } from '../ui/skeleton';
 import { computeReservationPricing, getReservationExtraTotalAmount, getSinglePassengerSurchargeSummary, isSinglePassengerSurchargeExtra } from '@/lib/packages/resolve-departure';
 import { normalizeTravelerDetails } from '@/lib/reservas/traveler-utils';
+import { getAuthInstance } from '@/lib/firebase';
+import { onAuthStateChanged, type User as FirebaseUser } from 'firebase/auth';
 import { isValidIsoDateString } from '@/lib/utils/argentine-date';
 import {
   getPackageRoomTypeLabel,
@@ -84,6 +87,15 @@ function formatAmountCents(amountCents: number, currency: string): string {
   return `${symbol} ${value} ${normalized}`;
 }
 
+async function getOptionalCommunityAuthorizationHeader(): Promise<Record<string, string>> {
+  try {
+    const user = getAuthInstance().currentUser;
+    return user ? { Authorization: `Bearer ${await user.getIdToken()}` } : {};
+  } catch {
+    return {};
+  }
+}
+
 function getExtraTotalAmount(extra: any, people: number): number {
   return getReservationExtraTotalAmount(extra, people);
 }
@@ -117,6 +129,12 @@ export default function CheckoutClient(props: CheckoutClientProps) {
   const [step, setStep] = useState<CheckoutStep>('form');
   const [isLoading, setIsLoading] = useState(false);
   const [isValidating, setIsValidating] = useState(isCartMode);
+  const [communityUser, setCommunityUser] = useState<FirebaseUser | null>(null);
+  const [communityAuthReady, setCommunityAuthReady] = useState(false);
+  const [couponCode, setCouponCode] = useState('');
+  const [communityQuote, setCommunityQuote] = useState<{ promotion: { kind: string; id: string; code?: string } | null; discount: { nombre: string; montoDescuento: number; montoFinal: number } | null; originalAmountCents: number; finalAmountCents: number; currency: string } | null>(null);
+  const [isCheckingPromotion, setIsCheckingPromotion] = useState(false);
+  const [communityQuoteError, setCommunityQuoteError] = useState('');
   const [error, setError] = useState<string | null>(null);
   const [referralCode, setReferralCode] = useState<string | null>(null);
   const [cartData, setCartData] = useState<CartValidateResponse | null>(null);
@@ -135,6 +153,50 @@ export default function CheckoutClient(props: CheckoutClientProps) {
     customerComments: '',
     passengerDetails: [] as TravelerForm[],
   });
+
+  useEffect(() => {
+    let active = true;
+    let unsubscribe = () => {};
+    try {
+      unsubscribe = onAuthStateChanged(getAuthInstance(), async (user) => {
+        if (!active) return;
+        setCommunityUser(user);
+        if (!user) {
+          setCommunityAuthReady(true);
+          return;
+        }
+        try {
+          const token = await user.getIdToken();
+          const response = await fetch('/api/community/profile', {
+            headers: { Authorization: `Bearer ${token}` },
+            cache: 'no-store',
+          });
+          const result = response.ok ? await response.json() : {};
+          const profile = result.profile ?? {};
+          const displayName = String(user.displayName ?? '').trim().split(/\s+/).filter(Boolean);
+          const firstName = String(profile.nombre ?? displayName[0] ?? '').trim();
+          const lastName = String(profile.apellido ?? displayName.slice(1).join(' ') ?? '').trim();
+          if (!active) return;
+          setForm((previous) => ({
+            ...previous,
+            customerFirstName: firstName || previous.customerFirstName,
+            customerLastName: lastName || previous.customerLastName,
+            customerEmail: String(user.email ?? profile.email ?? previous.customerEmail).trim().toLowerCase(),
+            customerPhone: String(profile.telefono ?? previous.customerPhone),
+          }));
+        } catch {
+          if (active && user.email) {
+            setForm((previous) => ({ ...previous, customerEmail: user.email!.trim().toLowerCase() }));
+          }
+        } finally {
+          if (active) setCommunityAuthReady(true);
+        }
+      });
+    } catch {
+      setCommunityAuthReady(true);
+    }
+    return () => { active = false; unsubscribe(); };
+  }, []);
   const [restored, setRestored] = useState(false);
 
   useEffect(() => {
@@ -339,6 +401,10 @@ export default function CheckoutClient(props: CheckoutClientProps) {
     return { amount, items: Array.from(byLabel.values()) };
   }, [cartData?.items, directPricing, isCartMode, people]);
   const checkoutBaseSubtotal = Math.max(0, total - checkoutExtras.amount);
+  const appliedCommunityDiscount = communityQuote?.discount && communityQuote.currency.toLowerCase() === currency.toLowerCase()
+    ? Math.min(checkoutBaseSubtotal, Math.max(0, Number(communityQuote.discount.montoDescuento) || 0))
+    : 0;
+  const checkoutDisplayTotal = Math.max(0, total - appliedCommunityDiscount);
   const checkoutSinglePassengerSurcharge = useMemo(
     () => getSinglePassengerSurchargeSummary({
       people: totalTravelers,
@@ -584,15 +650,20 @@ export default function CheckoutClient(props: CheckoutClientProps) {
         }
       }
       const baseUrl = getSiteUrl();
+      const communityHeaders = communityUser
+        ? { Authorization: `Bearer ${await communityUser.getIdToken()}` }
+        : await getOptionalCommunityAuthorizationHeader();
       const response = await fetch('/api/mercadopago/preference', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: { 'Content-Type': 'application/json', ...communityHeaders },
         body: JSON.stringify({
           slug: experience.slug,
           packageId: experience.id,
           date,
           people,
-          customerEmail: form.customerEmail.trim(),
+          customerEmail: communityUser?.email?.trim() || form.customerEmail.trim(),
+          customerFirstName: form.customerFirstName.trim(),
+          customerLastName: form.customerLastName.trim(),
           customerName: `${form.customerFirstName.trim()} ${form.customerLastName.trim()}`.trim(),
           customerPhone: form.customerPhone.trim() || undefined,
           customerCountry: form.customerCountry.trim() || undefined,
@@ -602,6 +673,8 @@ export default function CheckoutClient(props: CheckoutClientProps) {
           ...(form.roomSelection.length > 0 ? { roomSelection: form.roomSelection } : {}),
           customerComments: form.customerComments.trim() || undefined,
           passengerDetails: sanitizedPassengerDetails,
+          ...(couponCode.trim() ? { couponCode: couponCode.trim().toUpperCase() } : {}),
+          ...(communityQuote ? { expectedPromotionId: communityQuote.promotion?.id ?? '', expectedDiscountCents: communityQuote.discount?.montoDescuento ?? 0 } : {}),
           successUrl: `${baseUrl}/checkout/success?slug=${encodeURIComponent(experience.slug)}&date=${encodeURIComponent(date)}&people=${encodeURIComponent(String(people))}`,
           failureUrl: `${baseUrl}/checkout/cancel?slug=${encodeURIComponent(experience.slug)}`,
           pendingUrl: `${baseUrl}/checkout/success?slug=${encodeURIComponent(experience.slug)}&date=${encodeURIComponent(date)}&people=${encodeURIComponent(String(people))}`,
@@ -645,12 +718,17 @@ export default function CheckoutClient(props: CheckoutClientProps) {
       setCartData(validateData);
 
       const baseUrl = getSiteUrl();
+      const communityHeaders = communityUser
+        ? { Authorization: `Bearer ${await communityUser.getIdToken()}` }
+        : await getOptionalCommunityAuthorizationHeader();
       const response = await fetch('/api/mercadopago/preference', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: { 'Content-Type': 'application/json', ...communityHeaders },
         body: JSON.stringify({
           cartId: props.cartId,
-          customerEmail: form.customerEmail.trim(),
+          customerEmail: communityUser?.email?.trim() || form.customerEmail.trim(),
+          customerFirstName: form.customerFirstName.trim(),
+          customerLastName: form.customerLastName.trim(),
           customerName: `${form.customerFirstName.trim()} ${form.customerLastName.trim()}`.trim(),
           customerPhone: form.customerPhone.trim() || undefined,
           customerDocument: form.customerDocument.trim() || undefined,
@@ -659,6 +737,8 @@ export default function CheckoutClient(props: CheckoutClientProps) {
           ...(form.roomSelection.length > 0 ? { roomSelection: form.roomSelection } : {}),
           customerComments: form.customerComments.trim() || undefined,
           passengerDetails: sanitizedPassengerDetails,
+          ...(couponCode.trim() ? { couponCode: couponCode.trim().toUpperCase() } : {}),
+          ...(communityQuote ? { expectedPromotionId: communityQuote.promotion?.id ?? '', expectedDiscountCents: communityQuote.discount?.montoDescuento ?? 0 } : {}),
           successUrl: `${baseUrl}/checkout/success?cart=1&cartId=${encodeURIComponent(props.cartId)}`,
           failureUrl: `${baseUrl}/checkout/cancel?cart=1&cartId=${encodeURIComponent(props.cartId)}`,
           pendingUrl: `${baseUrl}/checkout/success?cart=1&cartId=${encodeURIComponent(props.cartId)}`,
@@ -681,6 +761,75 @@ export default function CheckoutClient(props: CheckoutClientProps) {
       setIsLoading(false);
     }
   };
+
+  useEffect(() => {
+    if (!communityAuthReady) return;
+    if (!communityUser) {
+      setCommunityQuote(null);
+      setCommunityQuoteError('');
+      setIsCheckingPromotion(false);
+      return;
+    }
+    if (isCartMode && (!cartData?.items?.length || isValidating)) return;
+    if (!isCartMode && (!experience || checkoutBaseSubtotal < 1)) return;
+
+    let cancelled = false;
+    const controller = new AbortController();
+    setCommunityQuote(null);
+    setCommunityQuoteError('');
+    setIsCheckingPromotion(true);
+    const timer = window.setTimeout(async () => {
+      try {
+        const token = await communityUser.getIdToken();
+        const common = {
+          customerEmail: communityUser.email ?? form.customerEmail.trim(),
+          ...(form.roomType ? { roomType: form.roomType } : {}),
+          ...(form.roomSelection.length > 0 ? { roomSelection: form.roomSelection } : {}),
+          ...(couponCode.trim() ? { couponCode: couponCode.trim().toUpperCase() } : {}),
+          previewOnly: true,
+        };
+        const checkout = isCartMode
+          ? { ...common, cartId: props.cartId }
+          : { ...common, slug: experience?.slug, packageId: experience?.id, date, people };
+        const response = await fetch('/api/mercadopago/preference', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+          body: JSON.stringify(checkout),
+          signal: controller.signal,
+        });
+        const result = await response.json().catch(() => ({}));
+        if (!response.ok) throw new Error(result.error || 'No se pudo actualizar la promoción.');
+        if (!cancelled) setCommunityQuote(result);
+      } catch (cause) {
+        if (!cancelled && !controller.signal.aborted) {
+          setCommunityQuoteError(cause instanceof Error ? cause.message : 'No se pudo actualizar la promoción.');
+        }
+      } finally {
+        if (!cancelled) setIsCheckingPromotion(false);
+      }
+    }, couponCode.trim() ? 350 : 0);
+
+    return () => {
+      cancelled = true;
+      window.clearTimeout(timer);
+      controller.abort();
+    };
+  }, [
+    communityAuthReady,
+    communityUser,
+    couponCode,
+    isCartMode,
+    cartData?.items,
+    isValidating,
+    experience,
+    date,
+    people,
+    checkoutBaseSubtotal,
+    form.customerEmail,
+    form.roomType,
+    form.roomSelection,
+    props.mode === 'cart' ? props.cartId : null,
+  ]);
 
   return (
     <div className="min-h-screen bg-slate-50/50 py-8 md:py-12 selection:bg-[#2BB8BF]/20 selection:text-[#2BB8BF]">
@@ -787,6 +936,12 @@ export default function CheckoutClient(props: CheckoutClientProps) {
                               {formatAmountCents(checkoutBaseSubtotal, currency)}
                             </span>
                           </div>
+                          {communityUser && isCheckingPromotion && <div className="flex items-center gap-2 text-xs text-slate-500"><Loader2 className="h-3.5 w-3.5 animate-spin text-[#208F91]" />Calculando beneficios para esta compra…</div>}
+                          {communityUser && communityQuoteError && <div role="status" className="text-xs text-amber-700">No pudimos actualizar los beneficios. {communityQuoteError}</div>}
+                          {appliedCommunityDiscount > 0 && <div className="flex items-center justify-between gap-3 text-[#187F80]">
+                            <span>{communityQuote?.discount?.nombre ?? 'Beneficio de comunidad'}</span>
+                            <span className="font-semibold">− {formatAmountCents(appliedCommunityDiscount, currency)}</span>
+                          </div>}
                           {checkoutExtras.items
                             .filter((extra: { code: string; label: string; amount: number }) => !isSinglePassengerSurchargeExtra(extra as any))
                             .map((extra: { code: string; label: string; amount: number }) => (
@@ -810,7 +965,7 @@ export default function CheckoutClient(props: CheckoutClientProps) {
                           <div className="h-px bg-slate-200" />
                           <div className="flex items-center justify-between gap-3">
                             <span className="font-semibold text-slate-900">Total a pagar</span>
-                            <span className="text-xl font-bold text-[#2BB8BF]">{formatAmountCents(total, currency)}</span>
+                            <span className="text-xl font-bold text-[#2BB8BF]">{formatAmountCents(checkoutDisplayTotal, currency)}</span>
                           </div>
                           {isCartMode ? (
                             <p className="text-xs font-medium text-slate-500">
@@ -840,9 +995,10 @@ export default function CheckoutClient(props: CheckoutClientProps) {
                         <div className="space-y-1.5">
                           <Label htmlFor="customerFirstName" className="text-xs font-bold text-slate-700 ml-1">Nombre *</Label>
                           <Input
-                            id="customerFirstName"
+                              id="customerFirstName"
+                              autoComplete="given-name"
                             value={form.customerFirstName}
-                            onChange={(e) => setForm((f) => ({ ...f, customerFirstName: e.target.value }))}
+                              onChange={(e) => setForm((f) => ({ ...f, customerFirstName: e.target.value }))}
                             onBlur={() => setTouched((t) => ({ ...t, firstName: true }))}
                             placeholder="Ej: María"
                             className="h-11 rounded-xl border-slate-200 bg-slate-50/30 text-sm focus:ring-2 focus:ring-[#2BB8BF]/10 focus:border-[#2BB8BF]"
@@ -852,7 +1008,8 @@ export default function CheckoutClient(props: CheckoutClientProps) {
                         <div className="space-y-1.5">
                           <Label htmlFor="customerLastName" className="text-xs font-bold text-slate-700 ml-1">Apellido *</Label>
                           <Input
-                            id="customerLastName"
+                              id="customerLastName"
+                              autoComplete="family-name"
                             value={form.customerLastName}
                             onChange={(e) => setForm((f) => ({ ...f, customerLastName: e.target.value }))}
                             onBlur={() => setTouched((t) => ({ ...t, lastName: true }))}
@@ -870,12 +1027,14 @@ export default function CheckoutClient(props: CheckoutClientProps) {
                               value={form.customerEmail}
                               onChange={(e) => setForm((f) => ({ ...f, customerEmail: e.target.value }))}
                               onBlur={() => setTouched((t) => ({ ...t, email: true }))}
-                              placeholder="Opcional — tu@email.com"
-                              className="h-11 rounded-xl border-slate-200 bg-slate-50/30 pl-10 text-sm focus:ring-2 focus:ring-[#2BB8BF]/10 focus:border-[#2BB8BF]"
+                              placeholder="tu@email.com"
+                              disabled={Boolean(communityUser) || !communityAuthReady}
+                              autoComplete="email"
+                              className="h-11 rounded-xl border-slate-200 bg-slate-50/30 pl-10 text-sm focus:ring-2 focus:ring-[#2BB8BF]/10 focus:border-[#2BB8BF] disabled:cursor-not-allowed disabled:bg-slate-100 disabled:text-slate-600"
                             />
                             <Mail className="absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
                           </div>
-                          <p className="text-[10px] text-slate-500 ml-1">Opcional — lo usamos solo para envío de comprobante</p>
+                          <p className="text-[10px] text-slate-500 ml-1">{communityUser ? 'Correo de tu cuenta Explorarg; no se puede modificar durante el checkout.' : 'Lo usamos para enviarte el comprobante.'}</p>
                           {emailError && <p className="text-[10px] font-bold text-red-500 ml-1">Ingresá un email válido</p>}
                         </div>
                         <div className="space-y-1.5">
@@ -972,6 +1131,7 @@ export default function CheckoutClient(props: CheckoutClientProps) {
 
                       <Button
                         type="submit"
+                        disabled={!communityAuthReady}
                         className="group h-12 w-full rounded-xl bg-[#2BB8BF] text-base font-bold text-white shadow-md shadow-[#2BB8BF]/10 transition-all hover:bg-[#25A1A7] active:scale-[0.98]"
                       >
                         {hasAdditionalTravelers ? 'Continuar con pasajeros' : 'Continuar al pago'}
@@ -1161,13 +1321,29 @@ export default function CheckoutClient(props: CheckoutClientProps) {
                     </p>
                   </CardHeader>
                   <CardContent className="p-6 space-y-6">
+                    <div className="rounded-xl border border-[#D8E8E8] bg-[#F8FCFC] p-4">
+                      {appliedCommunityDiscount > 0 && <div className="mb-2 flex items-center justify-between gap-3 text-sm text-[#187F80]"><span>{communityQuote?.discount?.nombre}</span><span className="font-semibold">− {formatAmountCents(appliedCommunityDiscount, currency)}</span></div>}
+                      <div className="flex items-center justify-between gap-3"><span className="text-sm font-medium text-slate-600">Total a pagar</span><span className="text-lg font-bold text-[#183F4A]">{formatAmountCents(checkoutDisplayTotal, currency)}</span></div>
+                    </div>
+                    <div className="rounded-2xl border border-slate-200 bg-[#F8FAFD] p-4 text-sm">
+                      {communityUser ? <><p className="font-semibold text-[#153F4A]">Cuenta Explorarg conectada</p><p className="mt-1 text-xs leading-5 text-[#60777D]">Esta compra se asociará a {communityUser.email}. Tus datos y beneficios se actualizan automáticamente.</p></> : <><p className="font-semibold text-[#183F4A]">¿Sos parte de la comunidad?</p><p className="mt-1 text-xs leading-5 text-[#60777D]">Ingresá a tu cuenta para asociar la compra y consultar los beneficios disponibles.</p><Link href="/login?next=%2Fcheckout" className="mt-2 inline-flex font-semibold text-[#167F82] underline underline-offset-4">Iniciar sesión</Link></>}
+                    </div>
+                    <div className="rounded-2xl border border-[#D8E8E8] bg-white p-4 sm:p-5">
+                      <div className="flex items-start gap-3"><span className="rounded-xl bg-[#E7F6F4] p-2.5 text-[#17888B]"><TicketPercent className="h-4 w-4" /></span><div><p className="font-semibold text-[#183F4A]">Beneficios y cupones</p><p className="mt-1 text-xs leading-5 text-slate-500">Si tenés un cupón, ingresalo y el precio se actualiza solo.</p></div></div>
+                      <div className="mt-4"><Input value={couponCode} onChange={(event) => setCouponCode(event.target.value.toUpperCase())} placeholder="Código de cupón (opcional)" autoComplete="off" className="h-11 rounded-xl border-slate-200 uppercase" aria-label="Código de cupón" /></div>
+                      {isCheckingPromotion && <p role="status" className="mt-3 flex items-center gap-2 text-xs text-slate-500"><Loader2 className="h-3.5 w-3.5 animate-spin text-[#208F91]" />Actualizando el precio con tus beneficios…</p>}
+                      {!isCheckingPromotion && communityQuote?.discount && <div role="status" className="mt-3 flex flex-wrap items-center justify-between gap-2 rounded-xl bg-[#ECF8F3] p-3 text-sm text-[#216B53]"><div><p className="font-semibold">{communityQuote.discount.nombre}</p><p className="mt-1 text-xs">Aplicado al precio de tu reserva.</p></div><p className="font-bold">Ahorrás {formatAmountCents(appliedCommunityDiscount, currency)}</p></div>}
+                      {!isCheckingPromotion && communityUser && communityQuote && !communityQuote.discount && !communityQuoteError && <p className="mt-3 text-xs text-slate-500">{couponCode.trim() ? 'No encontramos un descuento aplicable para este cupón.' : 'No hay beneficios aplicables a esta compra por el momento.'}</p>}
+                      {communityQuoteError && <p role="alert" className="mt-3 rounded-lg bg-rose-50 px-3 py-2 text-xs text-rose-700">{communityQuoteError}</p>}
+                      {!communityUser && couponCode.trim() && <p className="mt-2 text-xs text-slate-500">Para usar un cupón, iniciá sesión con tu cuenta Explorarg.</p>}
+                    </div>
                     <div className="space-y-3">
                       <Label className="text-[10px] font-bold uppercase tracking-widest text-slate-400 ml-1">Pagar con:</Label>
                       <motion.button
                         whileHover={{ scale: 1.01, borderColor: '#009EE3' }}
                         whileTap={{ scale: 0.99 }}
                         onClick={() => isCartMode ? createMercadoPagoPreferenceForCart() : createMercadoPagoPreferenceForLegacy()}
-                        disabled={isLoading || (isCartMode && !(cartData?.ok ?? false))}
+                        disabled={isLoading || isCheckingPromotion || (communityUser !== null && (!communityAuthReady || !communityQuote)) || (isCartMode && !(cartData?.ok ?? false))}
                         className="group relative w-full overflow-hidden rounded-2xl border border-slate-200 bg-white p-6 transition-all hover:shadow-lg disabled:opacity-50"
                       >
                         <div className="flex items-center justify-between gap-4">

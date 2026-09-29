@@ -17,7 +17,7 @@ import { buildEmailDeliveryState, emailDeliveryPathForJobType, type VentaEmailJo
 
 export const runtime = 'nodejs';
 
-type EmailJobStatus = 'pending' | 'sending' | 'sent' | 'failed';
+type EmailJobStatus = 'pending' | 'sending' | 'sent' | 'failed' | 'dead';
 type EmailJob = {
   type: VentaEmailJobType;
   status: EmailJobStatus;
@@ -32,6 +32,8 @@ type EmailJob = {
   nextAttemptAt: object;
   reservationId?: string;
 };
+
+const MAX_ATTEMPTS = 6;
 
 function getCronSecret(): string | null {
   return process.env.CRON_SECRET ?? null;
@@ -127,23 +129,68 @@ export async function POST(request: Request) {
 
   for (const job of jobs) {
     const jobRef = doc(db, 'emailJobs', job.id);
-    const locked = await runTransaction(db, async (tx) => {
+    const outcome = await runTransaction(db, async (tx) => {
       const snap = await tx.get(jobRef);
-      if (!snap.exists()) return false;
+      if (!snap.exists()) return 'skip';
       const data = snap.data() as EmailJob;
       const status = data.status;
-      if (status !== 'pending' && status !== 'failed') return false;
+      if (status !== 'pending' && status !== 'failed') return 'skip';
+
+      // Dedupe global: si la reserva ya registra el email como enviado, no reenviar.
+      if (data.reservationId) {
+        const deliveryPath = emailDeliveryPathForJobType(data.type);
+        const deliveryState = deliveryPath
+          .split('.')
+          .reduce<unknown>(
+            (acc, key) =>
+              acc && typeof acc === 'object' ? (acc as Record<string, unknown>)[key] : undefined,
+            (await tx.get(doc(db, 'reservas', data.reservationId))).data() as
+              | Record<string, unknown>
+              | undefined
+          );
+        const deliveryStatus = (deliveryState as { status?: string } | undefined)?.status;
+        if (deliveryStatus === 'sent') {
+          tx.update(jobRef, {
+            status: 'sent',
+            lastError: null,
+            updatedAt: Timestamp.now(),
+          });
+          return 'already_sent';
+        }
+      }
+
+      // Tope de intentos: los errores permanentes no deben reintentarse para siempre.
+      if ((data.attempts ?? 0) >= MAX_ATTEMPTS) {
+        tx.update(jobRef, {
+          status: 'dead',
+          lastError: data.lastError ?? 'Máximo de intentos alcanzado',
+          updatedAt: Timestamp.now(),
+        });
+        return 'dead';
+      }
+
       tx.update(jobRef, {
         status: 'sending',
         updatedAt: Timestamp.now(),
       });
-      return true;
-    }).catch(() => false);
+      return 'lock';
+    }).catch(() => 'skip');
 
-    if (!locked) continue;
+    if (outcome !== 'lock') {
+      if (outcome === 'already_sent') sent += 1;
+      if (outcome === 'dead') failed += 1;
+      continue;
+    }
 
     processedIds.push(job.id);
-    const from = job.data.from ?? getFromEmail();
+    // Recalcular from/replyTo al enviar: los jobs viejos pueden tener datos de marca desactualizados.
+    const from = getFromEmail();
+    const storedReplyTo = String(job.data.replyTo ?? '').trim();
+    const envSupport = String(process.env.SUPPORT_EMAIL ?? '').trim();
+    const replyTo =
+      envSupport ||
+      (storedReplyTo && !/@resend\.dev$/i.test(storedReplyTo) ? storedReplyTo : undefined) ||
+      undefined;
 
     try {
       if (!job.data.to || !job.data.subject || !job.data.html) {
@@ -155,7 +202,7 @@ export async function POST(request: Request) {
         subject: job.data.subject,
         html: job.data.html,
         text: job.data.text ?? undefined,
-        replyTo: job.data.replyTo ?? undefined,
+        replyTo,
       });
       if (error) {
         throw new Error(typeof error === 'string' ? error : JSON.stringify(error));

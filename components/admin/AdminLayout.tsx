@@ -25,8 +25,6 @@ import {
   ChevronRight,
   Users,
   UserPlus,
-  User,
-  Sparkles,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { motion, AnimatePresence } from 'framer-motion';
@@ -41,8 +39,8 @@ const navigation = [
   { name: 'Butacas', href: '/admin/butacas', icon: CalendarCheck },
   { name: 'Vendedores', href: '/admin/vendedores', icon: Users },
   { name: 'Plantillas micro', href: '/admin/plantillas-micro', icon: Compass },
-  { name: 'Blog', href: '/admin/blog', icon: Newspaper,isNew: true },
-  { name: 'Comunidad', href: '#', icon: Users, isNew: true },
+  { name: 'Blog', href: '/admin/blog', icon: Newspaper},
+  { name: 'Comunidad', href: '/admin/comunidad', icon: Users},
   { name: 'Banners', href: '/admin/banners', icon: ImageIcon },
   { name: 'Consultas', href: '/admin/consultas', icon: MessageSquare },
   { name: 'Newsletter', href: '/admin/newsletter', icon: Mail },
@@ -52,7 +50,6 @@ const navigation = [
 export default function AdminLayout({ children }: { children: React.ReactNode }) {
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [loggingOut, setLoggingOut] = useState(false);
-  const [communityPopupOpen, setCommunityPopupOpen] = useState(false);
   const pathname = usePathname();
   const router = useRouter();
   const { logout, user } = useAuth();
@@ -125,7 +122,6 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
           <nav className="flex-1 p-3 space-y-1 relative">
             {navigation.map((item) => {
               const isActive = matchesHref(item.href);
-              const isCommunity = item.name === 'Comunidad';
               return (
                 <div key={item.name} className="relative">
                   <Link
@@ -137,10 +133,6 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
                         : 'text-gray-400 hover:bg-white/5 hover:text-gray-200'
                     )}
                     onClick={(e) => {
-                      if (isCommunity) {
-                        e.preventDefault();
-                        setCommunityPopupOpen((value) => !value);
-                      }
                       setSidebarOpen(false);
                     }}
                   >
@@ -153,37 +145,13 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
                     )}
                     <item.icon className={cn('h-4 w-4', isActive ? 'text-gray-200' : 'text-gray-500 group-hover:text-gray-300')} />
                     <span className="font-medium">{item.name}</span>
-                    {item.isNew && (
+                    {/* {item.isNew && (
                       <span className="ml-auto inline-flex items-center rounded-full bg-white/10 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wider text-gray-300">
                         new
                       </span>
-                    )}
+                    )} */}
                   </Link>
 
-                  <AnimatePresence>
-                    {isCommunity && communityPopupOpen && (
-                      <motion.div
-                        initial={{ opacity: 0, scale: 0.95, y: 4 }}
-                        animate={{ opacity: 1, scale: 1, y: 0 }}
-                        exit={{ opacity: 0, scale: 0.95, y: 4 }}
-                        transition={{ duration: 0.15, ease: [0.16, 1, 0.3, 1] }}
-                        className="absolute left-full top-0 ml-2 w-72 rounded-xl border border-white/10 bg-gray-900 p-5 shadow-[0_10px_30px_rgba(0,0,0,0.4)] z-50"
-                        onClick={(e) => e.stopPropagation()}
-                      >
-                        <div className="flex items-center gap-2 text-sm font-semibold text-white">
-                          <User className="h-4 w-4 text-gray-200" />
-                          Comunidad Explorarg
-                        </div>
-                        <p className="mt-2 text-xs leading-relaxed text-gray-400">
-                          Estamos preparando una experiencia exclusiva para el equipo administrativo. Próximamente podrás gestionar registros, beneficios y novedades de la comunidad desde este panel.
-                        </p>
-                        <div className="mt-3 flex items-center gap-2 text-xs font-medium text-gray-300">
-                          <Sparkles className="h-3.5 w-3.5 text-gray-400" />
-                          Disponible próximamente
-                        </div>
-                      </motion.div>
-                    )}
-                  </AnimatePresence>
                 </div>
               );
             })}

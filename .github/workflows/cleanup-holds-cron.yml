@@ -1,0 +1,61 @@
+name: Liberar holds vencidos
+
+on:
+  schedule:
+    - cron: '*/5 * * * *'
+  workflow_dispatch:
+
+concurrency:
+  group: cleanup-holds-cron
+  cancel-in-progress: false
+
+jobs:
+  cleanup-holds:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Validar configuración
+        env:
+          HOLD_CRON_BASE_URL: ${{ secrets.HOLD_CRON_BASE_URL }}
+          CRON_SECRET: ${{ secrets.CRON_SECRET }}
+        run: |
+          if [ -z "$HOLD_CRON_BASE_URL" ]; then
+            echo "Falta el secret HOLD_CRON_BASE_URL (origen del sitio, por ejemplo https://exploarg.com)."
+            exit 1
+          fi
+          if [ -z "$CRON_SECRET" ]; then
+            echo "Falta el secret CRON_SECRET. Debe coincidir con CRON_SECRET configurado en el servidor."
+            exit 1
+          fi
+
+      - name: Expirar holds y liberar stock y butacas
+        env:
+          HOLD_CRON_BASE_URL: ${{ secrets.HOLD_CRON_BASE_URL }}
+          CRON_SECRET: ${{ secrets.CRON_SECRET }}
+        run: |
+          RESPONSE_FILE="$(mktemp)"
+          HTTP_STATUS="$(curl --silent --show-error --location \
+            --retry 3 \
+            --retry-all-errors \
+            --retry-delay 5 \
+            --request POST \
+            --url "${HOLD_CRON_BASE_URL%/}/api/cron/cleanup-holds" \
+            --header "Authorization: Bearer ${CRON_SECRET}" \
+            --header "Content-Type: application/json" \
+            --header "User-Agent: github-actions-cleanup-holds" \
+            --output "$RESPONSE_FILE" \
+            --write-out "%{http_code}")"
+
+          echo "HTTP ${HTTP_STATUS}"
+          cat "$RESPONSE_FILE"
+          echo
+
+          if [ "$HTTP_STATUS" -lt 200 ] || [ "$HTTP_STATUS" -ge 300 ]; then
+            echo "La limpieza de holds falló en el servidor."
+            exit 1
+          fi
+
+          if ! jq -e '.ok == true' "$RESPONSE_FILE" >/dev/null; then
+            echo "El endpoint reportó errores al expirar holds/órdenes."
+            exit 1
+          fi

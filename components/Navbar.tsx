@@ -1,15 +1,17 @@
 'use client';
 
 import { useLayoutEffect, useRef, useState, useEffect } from 'react';
+import { onAuthStateChanged, signOut, type User as FirebaseUser } from 'firebase/auth';
 import { createPortal } from 'react-dom';
 import Link from 'next/link';
 import Image from 'next/image';
 import { useRouter, usePathname } from 'next/navigation';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Menu, X, Home, Briefcase, MapPin, Compass, Phone, Mail, Search, MessageCircle, ShoppingCart, Loader2, ChevronRight, HelpCircle, Newspaper, Package, Users, User } from 'lucide-react';
+import { Menu, X, Home, Briefcase, MapPin, Compass, Phone, Mail, Search, MessageCircle, ShoppingCart, Loader2, ChevronRight, HelpCircle, Newspaper, Package, Users, User, LogOut } from 'lucide-react';
 import { SITE_NAME, CONTACT_INFO, SOCIAL_MEDIA } from '@/lib/constants';
 import { getBrandLogoSrc, isRemoteUrl, renderTemplate, siteConfig } from '@/lib/siteConfig';
 import { cn } from '@/lib/utils';
+import { getAuthInstance } from '@/lib/firebase';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 
 interface NavbarProps {
@@ -131,7 +133,37 @@ export default function Navbar({ transparent = false, forceTransparent = false, 
   const pathname = usePathname();
   const [reservationSearchOpen, setReservationSearchOpen] = useState(false);
   const [activeSectionId, setActiveSectionId] = useState<string | null>(null);
-  const [userPopupOpen, setUserPopupOpen] = useState(false);
+  const [communityUser, setCommunityUser] = useState<FirebaseUser | null>(null);
+  const [communityMenuOpen, setCommunityMenuOpen] = useState(false);
+  const communityMenuRef = useRef<HTMLDivElement>(null);
+  const communityMobileMenuRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => onAuthStateChanged(getAuthInstance(), setCommunityUser), []);
+
+  useEffect(() => {
+    if (!communityMenuOpen) return;
+    const closeOnOutsideClick = (event: MouseEvent) => {
+      if (!communityMenuRef.current?.contains(event.target as Node) && !communityMobileMenuRef.current?.contains(event.target as Node)) setCommunityMenuOpen(false);
+    };
+    const closeOnEscape = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') setCommunityMenuOpen(false);
+    };
+    document.addEventListener('mousedown', closeOnOutsideClick);
+    document.addEventListener('keydown', closeOnEscape);
+    return () => {
+      document.removeEventListener('mousedown', closeOnOutsideClick);
+      document.removeEventListener('keydown', closeOnEscape);
+    };
+  }, [communityMenuOpen]);
+
+  const handleCommunitySignOut = async () => {
+    try {
+      await signOut(getAuthInstance());
+      setCommunityMenuOpen(false);
+    } catch {
+      // Keep the menu available if Firebase could not complete sign-out.
+    }
+  };
 
   // En el home el indicador sigue la sección visible; en el resto, la ruta
   useEffect(() => {
@@ -429,7 +461,6 @@ export default function Navbar({ transparent = false, forceTransparent = false, 
       className="fixed top-0 left-0 right-0 z-[100] px-3 pt-[max(0.6rem,env(safe-area-inset-top))] sm:px-4"
       onClick={() => {
         if (mobileMenuOpen) setMobileMenuOpen(false);
-        if (userPopupOpen) setUserPopupOpen(false);
       }}
     >
       <div className="container mx-auto">
@@ -523,40 +554,55 @@ export default function Navbar({ transparent = false, forceTransparent = false, 
               )}
             </Link>
 
-            <div className="relative">
+              <div className="relative" ref={communityMenuRef}>
               <button
                 type="button"
-                aria-label="Comunidad"
+                aria-label="Menú de cuenta"
+                aria-expanded={communityMenuOpen}
+                aria-haspopup="menu"
                 onClick={(event) => {
                   event.stopPropagation();
-                  setUserPopupOpen((value) => !value);
+                  setCommunityMenuOpen((open) => !open);
                 }}
                 className="flex h-10 w-10 items-center justify-center rounded-full bg-white/[0.08] text-white transition-all duration-300 hover:bg-white/[0.14] active:scale-95"
               >
                 <User className="h-[19px] w-[19px]" strokeWidth={1.6} />
               </button>
               <AnimatePresence>
-                {userPopupOpen ? (
+                {communityMenuOpen && (
                   <motion.div
-                    initial={{ opacity: 0, scale: 0.95, y: 8 }}
-                    animate={{ opacity: 1, scale: 1, y: 0 }}
-                    exit={{ opacity: 0, scale: 0.95, y: 8 }}
-                    transition={{ duration: 0.2, ease: [0.16, 1, 0.3, 1] }}
-                    className="absolute right-0 top-full mt-2 w-72 rounded-2xl border border-white/10 bg-[#1B3A46]/95 p-5 shadow-[0_20px_50px_rgba(0,0,0,0.35)] backdrop-blur-xl"
+                    role="menu"
+                    initial={{ opacity: 0, y: 4 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    exit={{ opacity: 0, y: 4 }}
+                    transition={{ duration: 0.12 }}
+                    className="absolute right-0 top-full z-[110] mt-2 w-56 origin-top-right overflow-hidden rounded-xl border border-[#D8E7E8] bg-white p-1.5 text-slate-800 shadow-[0_10px_28px_rgba(7,40,82,0.14)]"
                     onClick={(event) => event.stopPropagation()}
                   >
-                    <div className="text-sm font-semibold text-white">Comunidad Explorarg</div>
-                    <p className="mt-1.5 text-xs leading-relaxed text-white/70">
-                      Estamos preparando una experiencia exclusiva para que registres tu cuenta, accedas a beneficios especiales y participes de sorteos y promociones únicas.
-                    </p>
-                    <div className="mt-3 flex items-center gap-2 text-xs text-[#2BB8BF]">
-                      <span className="inline-flex h-1.5 w-1.5 rounded-full bg-[#2BB8BF]" />
-                      Próximamente disponible
-                    </div>
+                    {communityUser ? (
+                      <>
+                        <div className="border-b border-[#E7EFF0] px-3 py-2"><p className="truncate text-xs text-slate-500">{communityUser.email}</p></div>
+                        <div className="space-y-0.5 p-1">
+                        <Link role="menuitem" href="/user" onClick={() => setCommunityMenuOpen(false)} className="flex items-center gap-2.5 rounded-lg px-3 py-2.5 text-sm font-medium text-[#183F4A] transition hover:bg-[#EFF8F7]">
+                          <User className="h-4 w-4 text-[#208F91]" />Mi cuenta
+                        </Link>
+                        <button role="menuitem" type="button" onClick={handleCommunitySignOut} className="flex w-full items-center gap-2.5 rounded-lg px-3 py-2.5 text-left text-sm font-medium text-slate-600 transition hover:bg-[#F5F8F8] hover:text-[#183F4A]">
+                          <LogOut className="h-4 w-4 text-slate-400" />Salir
+                        </button>
+                        </div>
+                      </>
+                    ) : (
+                      <>
+                        <div className="space-y-0.5 p-1">
+                          <Link role="menuitem" href="/login" onClick={() => setCommunityMenuOpen(false)} className="block rounded-lg px-3 py-2.5 text-sm font-medium text-[#183F4A] transition hover:bg-[#EFF8F7]">Iniciar sesión</Link>
+                          <Link role="menuitem" href="/registro" onClick={() => setCommunityMenuOpen(false)} className="block rounded-lg px-3 py-2.5 text-sm font-semibold text-[#168B8D] transition hover:bg-[#EFF8F7]">Crear cuenta</Link>
+                        </div>
+                      </>
+                    )}
                   </motion.div>
-                ) : null}
+                )}
               </AnimatePresence>
-            </div>
+              </div>
 
             <button
               type="button"
@@ -682,7 +728,6 @@ export default function Navbar({ transparent = false, forceTransparent = false, 
       className={`fixed top-0 left-0 right-0 z-[100] transition-all duration-500 ${isScrolled ? 'pt-2 md:pt-4' : 'pt-0'}`}
       onClick={() => {
         if (mobileMenuOpen) setMobileMenuOpen(false);
-        if (userPopupOpen) setUserPopupOpen(false);
       }}
     >
       {/* Topbar (Se oculta al scrollear para diseño más limpio) */}
@@ -938,14 +983,35 @@ export default function Navbar({ transparent = false, forceTransparent = false, 
                       </Link>
                     </div>
                     <div className="pt-2">
+                      <div className="relative" ref={communityMobileMenuRef}>
                       <button
                         type="button"
-                        onClick={() => setUserPopupOpen((value) => !value)}
+                        aria-expanded={communityMenuOpen}
+                        onClick={() => setCommunityMenuOpen((open) => !open)}
                         className="flex w-full items-center justify-center gap-2 rounded-xl border border-gray-200 bg-white px-4 py-3 text-sm font-semibold text-gray-800 transition hover:bg-gray-50"
                       >
                         <User className="h-4 w-4 text-gray-600" strokeWidth={1.6} />
-                        Comunidad Explorarg
+                        {communityUser ? 'Mi cuenta' : 'Comunidad Explorarg'}
                       </button>
+                      <AnimatePresence>
+                        {communityMenuOpen && (
+                          <motion.div initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: 'auto' }} exit={{ opacity: 0, height: 0 }} className="mt-2 overflow-hidden rounded-xl border border-[#D8E7E8] bg-white p-2 text-[#183F4A] shadow-sm">
+                            {communityUser ? (
+                              <>
+                                <p className="truncate border-b border-[#E7EFF0] px-2 py-2 text-xs text-slate-500">{communityUser.email}</p>
+                                <Link href="/user" onClick={() => { setCommunityMenuOpen(false); setMobileMenuOpen(false); }} className="mt-1 flex items-center gap-2.5 rounded-lg px-2 py-2.5 text-sm font-medium transition hover:bg-[#EFF8F7]"><User className="h-4 w-4 text-[#208F91]" />Mi cuenta</Link>
+                                <button type="button" onClick={handleCommunitySignOut} className="flex w-full items-center gap-2.5 rounded-lg px-2 py-2.5 text-left text-sm font-medium text-slate-600 transition hover:bg-[#F5F8F8]"><LogOut className="h-4 w-4 text-slate-400" />Salir</button>
+                              </>
+                            ) : (
+                              <>
+                                <Link href="/login" onClick={() => { setCommunityMenuOpen(false); setMobileMenuOpen(false); }} className="mb-1 block rounded-lg px-2 py-2.5 text-sm font-medium transition hover:bg-[#EFF8F7]">Iniciar sesión</Link>
+                                <Link href="/registro" onClick={() => { setCommunityMenuOpen(false); setMobileMenuOpen(false); }} className="block rounded-lg px-2 py-2.5 text-sm font-semibold text-[#168B8D] transition hover:bg-[#EFF8F7]">Crear cuenta</Link>
+                              </>
+                            )}
+                          </motion.div>
+                        )}
+                      </AnimatePresence>
+                      </div>
                     </div>
                   </div>
                 </div>
@@ -960,7 +1026,7 @@ export default function Navbar({ transparent = false, forceTransparent = false, 
   return (
     <>
       {reserveSpace && (
-        <div aria-hidden className="w-full transition-[height] duration-500" />
+        <div aria-hidden className="w-full transition-[height] duration-500" style={{ height: navHeight }} />
       )}
       {mounted && typeof document !== "undefined"
         ? createPortal(navContent, document.body)

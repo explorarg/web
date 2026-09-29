@@ -104,7 +104,7 @@ function init() {
 
 init();
 
-export const adminAuth = _adminAuth;
+export const adminAuth: Auth | null = _adminAuth;
 
 export function getAdminDb(): Firestore | null {
   return _adminDb;
