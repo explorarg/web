@@ -212,7 +212,7 @@ export default function LoginPage() {
                   type="email"
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
-                  placeholder="administracion@explorarg.com"
+                  placeholder="admin@explorarg.ar"
                   required
                   disabled={loading || isBlocked}
                   className="h-12 rounded-2xl border-slate-200 bg-slate-50 px-4 text-base shadow-none focus:border-[#2BB8BF] focus:ring-[#2BB8BF]/20 disabled:opacity-50"
