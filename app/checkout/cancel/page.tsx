@@ -53,7 +53,7 @@ export default async function CheckoutCancelPage({
               </ul>
             </div>
 
-            <div className="mt-8 grid w-full grid-cols-1 gap-3 sm:flex sm:flex-wrap sm:justify-center">
+            <div className="py-8 grid w-full grid-cols-1 gap-3 sm:flex sm:flex-wrap sm:justify-center">
               {slug && (
                 <Button asChild variant="outline" className="h-12 w-full justify-center gap-2 rounded-xl px-5 text-sm font-semibold sm:w-auto sm:min-w-[170px]">
                   <Link className="flex w-full items-center justify-center gap-2" href={`/paquete/${slug}`}>

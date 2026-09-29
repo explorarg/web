@@ -375,7 +375,7 @@ export default async function CheckoutSuccessPage({
             />
           ) : (hasSession ? <SuccessVerification sessionId={sessionId} /> : null)}
 
-          <div className="mt-5 grid w-full grid-cols-1 gap-3 sm:flex sm:flex-wrap sm:justify-center">
+          <div className="py-5 grid w-full grid-cols-1 gap-3 sm:flex sm:flex-wrap sm:justify-center">
             <Button asChild variant="success" className="h-12 w-full justify-center gap-2 rounded-xl bg-[#20A464] px-5 text-sm font-bold text-white shadow-sm hover:bg-[#188653] sm:w-auto sm:min-w-[190px]">
               <Link className="flex w-full items-center justify-center gap-2" href={whatsappHref} target="_blank" rel="noopener noreferrer">
                 <MessageCircle className="h-4 w-4" />
