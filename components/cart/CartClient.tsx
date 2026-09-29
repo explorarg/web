@@ -174,6 +174,7 @@ export default function CartClient() {
     if (!res.ok) throw new Error('No se pudo cargar el carrito.');
     const json = (await res.json()) as CartApiResponse;
     setData(json);
+    window.dispatchEvent(new Event('cart-updated'));
     setTermsAccepted(Boolean(json?.cart?.termsAccepted));
     if (json?.cart?.termsAccepted) {
       setTermsError(null);
@@ -190,6 +191,7 @@ export default function CartClient() {
     if (!res.ok) return;
     const json = (await res.json()) as CartApiResponse;
     setData(json);
+    window.dispatchEvent(new Event('cart-updated'));
   };
 
   const loadEditSeatState = async (it: any, opts?: { silent?: boolean }) => {

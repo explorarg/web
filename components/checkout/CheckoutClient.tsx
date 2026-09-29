@@ -548,6 +548,7 @@ export default function CheckoutClient(props: CheckoutClientProps) {
 
   const handleSubmitForm = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (isCheckingPromotion || communityQuoteError || (communityUser && (!communityAuthReady || !communityQuote))) return;
     setTouched({ firstName: true, lastName: true, email: true, phone: true, document: true, birthDate: true });
     const firstName = form.customerFirstName.trim();
     const lastName = form.customerLastName.trim();
@@ -584,19 +585,8 @@ export default function CheckoutClient(props: CheckoutClientProps) {
       setError('Ingresá tu fecha de nacimiento.');
       return;
     }
-    if (!roomTypeCompatible) {
+    if (!isCartMode && !roomTypeCompatible) {
       setError('Seleccioná uno de los tipos de habitación disponibles.');
-      return;
-    }
-    try {
-      if (isCartMode) {
-        await syncRoomTypeForCart(
-          form.roomType || null,
-          form.roomSelection
-        );
-      }
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'No se pudo guardar la distribución de habitaciones.');
       return;
     }
     setError(null);
@@ -606,6 +596,7 @@ export default function CheckoutClient(props: CheckoutClientProps) {
 
   const handleSubmitCompanions = (e: React.FormEvent) => {
     e.preventDefault();
+    if (isCheckingPromotion || communityQuoteError || (communityUser && (!communityAuthReady || !communityQuote))) return;
     setCompanionsSubmitted(true);
     if (!hasAdditionalTravelers) {
       setStep('payment');
@@ -942,8 +933,7 @@ export default function CheckoutClient(props: CheckoutClientProps) {
                               {formatAmountCents(checkoutBaseSubtotal, currency)}
                             </span>
                           </div>
-                          {communityUser && isCheckingPromotion && <div className="flex items-center gap-2 text-xs text-slate-500"><Loader2 className="h-3.5 w-3.5 animate-spin text-[#208F91]" />Calculando beneficios para esta compra…</div>}
-                          {communityUser && communityQuoteError && <div role="status" className="text-xs text-amber-700">No pudimos actualizar los beneficios. {communityQuoteError}</div>}
+                          {communityUser && isCheckingPromotion && <div className="space-y-2 py-1" aria-label="Actualizando resumen"><Skeleton className="h-4 w-full" /><Skeleton className="h-4 w-2/3" /></div>}
                           {appliedCommunityDiscount > 0 && <div className="flex items-center justify-between gap-3 text-[#187F80]">
                             <span>{communityQuote?.discount?.nombre ?? 'Beneficio de comunidad'}</span>
                             <span className="font-semibold">− {formatAmountCents(appliedCommunityDiscount, currency)}</span>
@@ -1078,7 +1068,7 @@ export default function CheckoutClient(props: CheckoutClientProps) {
                           />
                           {birthDateError && <p className="text-[10px] font-bold text-red-500 ml-1">Fecha de nacimiento obligatoria</p>}
                         </div>
-                        {availableRoomTypes.length > 0 && (
+                        {!isCartMode && availableRoomTypes.length > 0 && (
                         <div className="space-y-1.5 md:col-span-2">
                           <Label htmlFor="roomType" className="text-xs font-bold text-slate-700 ml-1">
                             Distribución de habitaciones *
@@ -1137,7 +1127,7 @@ export default function CheckoutClient(props: CheckoutClientProps) {
 
                       <Button
                         type="submit"
-                        disabled={!communityAuthReady}
+                        disabled={!communityAuthReady || isCheckingPromotion || Boolean(communityQuoteError) || (communityUser !== null && !communityQuote)}
                         className="group h-12 w-full rounded-xl bg-[#2BB8BF] text-base font-bold text-white shadow-md shadow-[#2BB8BF]/10 transition-all hover:bg-[#25A1A7] active:scale-[0.98]"
                       >
                         {hasAdditionalTravelers ? 'Continuar con pasajeros' : 'Continuar al pago'}
@@ -1301,6 +1291,7 @@ export default function CheckoutClient(props: CheckoutClientProps) {
                         </Button>
                         <Button
                           type="submit"
+                          disabled={isCheckingPromotion || Boolean(communityQuoteError) || (communityUser !== null && (!communityAuthReady || !communityQuote))}
                           className="group h-12 w-full rounded-xl bg-[#2BB8BF] text-base font-bold text-white shadow-md shadow-[#2BB8BF]/10 transition-all hover:bg-[#25A1A7] active:scale-[0.98] sm:min-w-0 sm:flex-1"
                         >
                           Continuar al pago
@@ -1337,7 +1328,7 @@ export default function CheckoutClient(props: CheckoutClientProps) {
                     <div className="rounded-2xl border border-[#D8E8E8] bg-white p-4 sm:p-5">
                       <div className="flex items-start gap-3"><span className="rounded-xl bg-[#E7F6F4] p-2.5 text-[#17888B]"><TicketPercent className="h-4 w-4" /></span><div><p className="font-semibold text-[#183F4A]">Beneficios y cupones</p><p className="mt-1 text-xs leading-5 text-slate-500">Si tenés un cupón, ingresalo y el precio se actualiza solo.</p></div></div>
                       <div className="mt-4"><Input value={couponCode} onChange={(event) => setCouponCode(event.target.value.toUpperCase())} placeholder="Código de cupón (opcional)" autoComplete="off" className="h-11 rounded-xl border-slate-200 uppercase" aria-label="Código de cupón" /></div>
-                      {isCheckingPromotion && <p role="status" className="mt-3 flex items-center gap-2 text-xs text-slate-500"><Loader2 className="h-3.5 w-3.5 animate-spin text-[#208F91]" />Actualizando el precio con tus beneficios…</p>}
+                      {isCheckingPromotion && <div className="mt-4 space-y-2" aria-label="Actualizando beneficios"><Skeleton className="h-4 w-full" /><Skeleton className="h-4 w-2/3" /></div>}
                       {!isCheckingPromotion && communityQuote?.discount && <div role="status" className="mt-3 flex flex-wrap items-center justify-between gap-2 rounded-xl bg-[#ECF8F3] p-3 text-sm text-[#216B53]"><div><p className="font-semibold">{communityQuote.discount.nombre}</p><p className="mt-1 text-xs">Aplicado al precio de tu reserva.</p></div><p className="font-bold">Ahorrás {formatAmountCents(appliedCommunityDiscount, currency)}</p></div>}
                       {!isCheckingPromotion && communityUser && communityQuote && !communityQuote.discount && !communityQuoteError && <p className="mt-3 text-xs text-slate-500">{couponCode.trim() ? 'No encontramos un descuento aplicable para este cupón.' : 'No hay beneficios aplicables a esta compra por el momento.'}</p>}
                       {communityQuoteError && <p role="alert" className="mt-3 rounded-lg bg-rose-50 px-3 py-2 text-xs text-rose-700">{communityQuoteError}</p>}
@@ -1349,7 +1340,7 @@ export default function CheckoutClient(props: CheckoutClientProps) {
                         whileHover={{ scale: 1.01, borderColor: '#009EE3' }}
                         whileTap={{ scale: 0.99 }}
                         onClick={() => isCartMode ? createMercadoPagoPreferenceForCart() : createMercadoPagoPreferenceForLegacy()}
-                        disabled={isLoading || isCheckingPromotion || (communityUser !== null && (!communityAuthReady || !communityQuote)) || (isCartMode && !(cartData?.ok ?? false))}
+                        disabled={isLoading || isCheckingPromotion || Boolean(communityQuoteError) || (communityUser !== null && (!communityAuthReady || !communityQuote)) || (isCartMode && !(cartData?.ok ?? false))}
                         className="group relative w-full overflow-hidden rounded-2xl border border-slate-200 bg-white p-6 transition-all hover:shadow-lg disabled:opacity-50"
                       >
                         <div className="flex items-center justify-between gap-4">

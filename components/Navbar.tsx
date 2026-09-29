@@ -210,17 +210,28 @@ export default function Navbar({ transparent = false, forceTransparent = false, 
         const res = await fetch('/api/cart', { cache: 'no-store' });
         if (res.ok) {
           const json = await res.json();
-          setCartCount(json?.items?.length || 0);
+          setCartCount((current) => {
+            const next = Array.isArray(json?.items) ? json.items.length : 0;
+            return current === next ? current : next;
+          });
         }
-      } catch (err) {
-        // silent error
+      } catch {
+        // Keep the last known count while temporarily offline.
       }
     };
 
     fetchCartCount();
-    const interval = setInterval(fetchCartCount, 30000);
-    return () => clearInterval(interval);
-  }, []);
+    const interval = setInterval(fetchCartCount, 3000);
+    const onFocus = () => void fetchCartCount();
+    const onCartUpdated = () => void fetchCartCount();
+    window.addEventListener('focus', onFocus);
+    window.addEventListener('cart-updated', onCartUpdated);
+    return () => {
+      clearInterval(interval);
+      window.removeEventListener('focus', onFocus);
+      window.removeEventListener('cart-updated', onCartUpdated);
+    };
+  }, [pathname]);
 
   useEffect(() => {
     const handleScroll = () => {
