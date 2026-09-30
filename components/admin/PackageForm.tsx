@@ -8,7 +8,6 @@ import {
   AlertTriangle,
   BedDouble,
   Bus,
-  Check,
   ChevronDown,
   ChevronUp,
   Compass,
@@ -187,34 +186,6 @@ function ToggleCard({
       <Icon className={cn('h-4 w-4', active ? 'text-[#0EA5C6]' : 'text-[#94A3B8]')} />
       <span className="text-[11px] font-semibold">{label}</span>
     </button>
-  );
-}
-
-function StatusPill({
-  active,
-  label,
-  tone,
-}: {
-  active: boolean;
-  label: string;
-  tone: 'draft' | 'published';
-}) {
-  return (
-    <span
-      className={cn(
-        'inline-flex items-center rounded-full border px-3 py-1 text-[11px] font-bold',
-        tone === 'published'
-          ? active
-            ? 'border-[#A7F3D0] bg-[#ECFDF5] text-[#047857]'
-            : 'border-[#D1FAE5] bg-white text-[#94A3B8]'
-          : active
-            ? 'border-[#E2E8F0] bg-[#F8FAFC] text-[#475569]'
-            : 'border-[#E2E8F0] bg-white text-[#94A3B8]'
-      )}
-    >
-      {active && tone === 'published' ? <Check className="mr-1.5 h-3.5 w-3.5" /> : null}
-      {label}
-    </span>
   );
 }
 
@@ -454,27 +425,9 @@ export default function PackageForm(props: Props) {
         </div>
 
         <div className="flex flex-wrap items-center gap-3">
-          <Button
-            type="submit"
-            variant="outline"
-            size="sm"
-            className="rounded-xl border-[#D7E3EF]"
-            onClick={() => setValue('visible', false)}
-            disabled={loading}
-          >
-            Guardar borrador
-          </Button>
-          <Button
-            type="submit"
-            variant="success"
-            size="sm"
-            className="rounded-xl"
-            onClick={() => setValue('visible', true)}
-            disabled={loading}
-          >
-            {visible ? 'Publicar paquete' : 'Guardar y publicar'}
-            <ChevronDown className="ml-2 h-4 w-4" />
-          </Button>
+          <span className={cn('rounded-full px-3 py-1 text-xs font-semibold', visible ? 'bg-emerald-50 text-emerald-700' : 'bg-slate-100 text-slate-600')}>
+            {visible ? 'Activo' : 'Desactivado'}
+          </span>
         </div>
       </div>
 
@@ -1222,16 +1175,15 @@ export default function PackageForm(props: Props) {
 
         <SectionCard
           title="Estado del paquete"
-          description="Controlá su visibilidad, publicación y configuración comercial."
+          description="Controlá si el paquete está activo o desactivado en el sitio."
         >
           <div className="space-y-4">
             <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
               <div className="text-[12px] text-[#94A3B8]">
-                {visible ? 'El paquete está listo para mostrarse en el sitio.' : 'El paquete se guardará como borrador interno.'}
-            </div>
-              <div className="flex items-center gap-2">
-                <StatusPill active={!visible} label="Borrador" tone="draft" />
-                <StatusPill active={visible} label="Publicado" tone="published" />
+                {visible ? 'El paquete está activo y se muestra en el sitio.' : 'El paquete está desactivado y no se muestra en el sitio.'}
+              </div>
+              <div className={cn('rounded-full px-3 py-1 text-[11px] font-bold', visible ? 'bg-emerald-50 text-emerald-700' : 'bg-slate-100 text-slate-600')}>
+                {visible ? 'Activo' : 'Desactivado'}
               </div>
             </div>
 
@@ -1239,7 +1191,7 @@ export default function PackageForm(props: Props) {
               <div className="rounded-[12px] border border-[#E5ECF4] bg-white px-4 py-3">
                 <div className="flex items-center justify-between gap-3">
                   <div>
-                    <div className="text-sm font-semibold text-[#0F172A]">Publicado</div>
+                    <div className="text-sm font-semibold text-[#0F172A]">Activo</div>
                   </div>
                   <Switch checked={visible} onCheckedChange={(checked) => setValue('visible', checked)} />
                 </div>
@@ -1311,17 +1263,7 @@ export default function PackageForm(props: Props) {
           <div className="flex flex-wrap items-center gap-3">
             <Button
               type="submit"
-              variant="outline"
-              className="rounded-xl border-[#D7E3EF]"
-              onClick={() => setValue('visible', false)}
-              disabled={loading}
-            >
-              Guardar borrador
-            </Button>
-            <Button
-              type="submit"
               className="min-w-[200px] rounded-xl bg-[#0EA5C6] text-white shadow-[0_12px_28px_rgba(14,165,198,0.24)] hover:bg-[#0891B2]"
-              onClick={() => setValue('visible', true)}
               disabled={loading}
             >
               {loading ? (

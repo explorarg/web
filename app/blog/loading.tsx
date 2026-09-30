@@ -10,7 +10,7 @@ export default function LoadingBlog() {
     <div className="min-h-[100dvh] w-full min-w-0 overflow-x-clip bg-[#F5FAFF]">
       <Navbar variant="homeMockup" reserveSpace />
 
-      <section className="border-b border-[#E4EDF6] pt-16 md:pt-20">
+      <section className="border-b border-[#E4EDF6] pt-0 md:pt-16">
         <div className="container mx-auto px-4 py-14 md:px-6 md:py-20 lg:px-8">
           <div className="flex flex-col gap-6 md:flex-row md:items-end md:justify-between">
             <div className="max-w-2xl space-y-4">

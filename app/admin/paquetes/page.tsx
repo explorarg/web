@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useState, useMemo } from 'react';
-import { collection, getDocs, deleteDoc, doc, orderBy, query, getDoc, addDoc, Timestamp } from 'firebase/firestore';
+import { collection, getDocs, deleteDoc, doc, orderBy, query, getDoc, addDoc, Timestamp, updateDoc } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
 import { Paquete } from '@/types';
 import { deleteBlobByKey, getBlobKeyFromUrl } from '@/lib/utils/blob';
@@ -148,6 +148,7 @@ export default function PaquetesPage() {
   const [duplicateId, setDuplicateId] = useState<string | null>(null);
   const [duplicating, setDuplicating] = useState(false);
   const [exporting, setExporting] = useState(false);
+  const [statusUpdatingId, setStatusUpdatingId] = useState<string | null>(null);
   const [currentPage, setCurrentPage] = useState(1);
   const [itemsPerPage, setItemsPerPage] = useState(10);
   const [searchTerm, setSearchTerm] = useState('');
@@ -300,6 +301,26 @@ export default function PaquetesPage() {
     } finally {
       setDuplicating(false);
       setDuplicateId(null);
+    }
+  };
+
+  const handleToggleActive = async (paquete: Paquete) => {
+    if (statusUpdatingId) return;
+    const nextVisible = paquete.visible !== true;
+    setStatusUpdatingId(paquete.id);
+    setPaquetes((current) => current.map((item) => item.id === paquete.id ? { ...item, visible: nextVisible } : item));
+    try {
+      await updateDoc(doc(db, 'paquetes', paquete.id), { visible: nextVisible, updatedAt: Timestamp.now() });
+      void revalidateFrontPaths(['/', '/paquetes', `/paquete/${paquete.slug}`]).catch((error) => {
+        console.error('Error revalidando páginas del paquete:', error);
+      });
+      toast.success(nextVisible ? 'Paquete activado' : 'Paquete desactivado');
+    } catch (error) {
+      console.error('Error actualizando estado del paquete:', error);
+      setPaquetes((current) => current.map((item) => item.id === paquete.id ? { ...item, visible: paquete.visible } : item));
+      toast.error('No se pudo actualizar el estado del paquete');
+    } finally {
+      setStatusUpdatingId(null);
     }
   };
 
@@ -522,6 +543,7 @@ export default function PaquetesPage() {
             collectionName="paquetes"
             viewPath="/paquete"
             canDuplicate={canDuplicate}
+            onToggleActive={(item) => void handleToggleActive(item)}
             onDuplicate={(item) => setDuplicateId(item.id)}
             columns={[
               {
@@ -620,12 +642,12 @@ export default function PaquetesPage() {
                 render: (item) => (
                   <div className="flex gap-2 flex-wrap">
                     <Badge 
-                      variant={item.visible ? 'default' : 'secondary'}
-                      className={item.visible ? 'bg-green-100 text-green-800 hover:bg-green-100 font-medium' : 'font-medium'}
+                      variant={item.visible === true ? 'default' : 'secondary'}
+                      className={item.visible === true ? 'bg-green-100 text-green-800 hover:bg-green-100 font-medium' : 'font-medium'}
                     >
                       <span className="inline-flex items-center gap-1">
-                        {item.visible ? <CheckCircle2 className="h-3.5 w-3.5" /> : <XCircle className="h-3.5 w-3.5" />}
-                        {item.visible ? 'Visible' : 'Oculto'}
+                        {item.visible === true ? <CheckCircle2 className="h-3.5 w-3.5" /> : <XCircle className="h-3.5 w-3.5" />}
+                        {item.visible === true ? 'Activo' : 'Desactivado'}
                       </span>
                     </Badge>
                     {item.destacado && (

@@ -505,7 +505,6 @@ export default function CartClient() {
     });
     deletingItemIdsRef.current.add(itemId);
     setDeletingItemIds((prev) => [...prev, itemId]);
-    setDeleteStatus({ tone: 'loading', text: 'Quitando el item y liberando sus butacas…' });
     try {
       const res = await fetch('/api/cart/items', {
         method: 'DELETE',

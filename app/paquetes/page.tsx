@@ -144,7 +144,7 @@ export default async function PaquetesPage({
       <Navbar variant="homeMockup" reserveSpace />
       <WhatsAppButton />
 
-      <section className="border-b border-[#E4EDF6] bg-[#F5FAFF] pt-16 md:pt-20">
+      <section className="border-b border-[#E4EDF6] bg-[#F5FAFF] pt-0 md:pt-16">
         <div className="container mx-auto px-4 py-14 md:px-6 md:py-20 lg:px-8">
           <div className="max-w-2xl">
             <div className="text-[10px] font-bold uppercase tracking-[0.28em] text-[#A1ACB8]">

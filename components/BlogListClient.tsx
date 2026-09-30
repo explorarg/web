@@ -75,7 +75,7 @@ export default function BlogListClient({ posts }: BlogListClientProps) {
       <Navbar variant="homeMockup" reserveSpace />
       <WhatsAppButton />
 
-      <section className="border-b border-[#E4EDF6] pt-16 md:pt-20">
+      <section className="border-b border-[#E4EDF6] pt-0 md:pt-16">
         <div className="container mx-auto px-4 py-14 md:px-6 md:py-20 lg:px-8">
           <motion.div
             initial={{ opacity: 0, y: 18 }}

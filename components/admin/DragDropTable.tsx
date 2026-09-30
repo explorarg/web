@@ -20,7 +20,8 @@ import {
   Loader2,
   Eye,
   MoreHorizontal,
-  AlertTriangle
+  AlertTriangle,
+  Power,
 } from 'lucide-react';
 import {
   DndContext,
@@ -71,6 +72,7 @@ interface DragDropTableProps<T extends { id: string }> {
   onDelete: (id: string) => void;
   onDuplicate?: (item: T) => void;
   canDuplicate?: boolean;
+  onToggleActive?: (item: T) => void;
   editPath: string;
   viewPath?: string; // Ruta para ver el detalle del elemento
   sort?: SortState;
@@ -85,6 +87,7 @@ interface SortableRowProps<T> {
   onDelete: (id: string) => void;
   onDuplicate?: (item: T) => void;
   canDuplicate: boolean;
+  onToggleActive?: (item: T) => void;
   isDragDisabled: boolean;
 }
 
@@ -96,6 +99,7 @@ function SortableRow<T extends { id: string }>({
   onDelete,
   onDuplicate,
   canDuplicate,
+  onToggleActive,
   isDragDisabled 
 }: SortableRowProps<T>) {
   const {
@@ -178,6 +182,12 @@ function SortableRow<T extends { id: string }>({
               <Copy className="h-4 w-4" />
               Duplicar
             </DropdownMenuItem>
+            {onToggleActive ? (
+              <DropdownMenuItem onClick={() => onToggleActive(item)}>
+                <Power className="h-4 w-4" />
+                {(item as any).visible === true ? 'Desactivar' : 'Activar'}
+              </DropdownMenuItem>
+            ) : null}
             <DropdownMenuSeparator />
             <DropdownMenuItem
               onClick={() => onDelete((item as any).id)}
@@ -201,6 +211,7 @@ export default function DragDropTable<T extends { id: string }>({
   onDelete,
   onDuplicate,
   canDuplicate = true,
+  onToggleActive,
   editPath,
   viewPath,
   sort,
@@ -472,6 +483,7 @@ export default function DragDropTable<T extends { id: string }>({
                       onDelete={onDelete}
                       onDuplicate={onDuplicate}
                       canDuplicate={canDuplicate}
+                      onToggleActive={onToggleActive}
                       isDragDisabled={!dragMode}
                     />
                   ))
