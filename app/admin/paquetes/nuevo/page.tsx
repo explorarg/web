@@ -229,7 +229,7 @@ export default function NuevoPaquetePage() {
   return (
     <ProtectedRoute>
       <AdminLayout>
-        <div className="max-w-5xl mx-auto space-y-6 pb-12">
+        <div className="mx-auto space-y-6 pb-12">
           <form onSubmit={handleSubmit(onSubmit)}>
             <PackageForm
               mode="create"

@@ -251,7 +251,7 @@ export default function BannersPage() {
   return (
     <ProtectedRoute>
       <AdminLayout>
-        <div className="max-w-5xl mx-auto space-y-6 pb-12">
+        <div className="mx-auto space-y-6 pb-12">
           <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
             <div>
               <h1 className="text-lg font-semibold text-gray-900 tracking-tight">Banners</h1>
