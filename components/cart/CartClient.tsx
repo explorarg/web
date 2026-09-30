@@ -84,7 +84,7 @@ function getExtraTotalAmount(extra: any, people: number): number {
 
 function CartSkeleton() {
   return (
-    <div className="container mx-auto max-w-7xl px-4 py-10 md:px-6 lg:px-8">
+    <div className="container mx-auto px-4 py-10 md:px-6 lg:px-8">
       <div className="animate-pulse space-y-6">
         <div className="h-4 w-56 rounded-full bg-[#DCEBFA]" />
         <div className="flex items-start justify-between gap-6">

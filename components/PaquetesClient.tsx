@@ -70,6 +70,7 @@ function PaquetesClientContent({ paquetes, categorias }: PaquetesClientProps) {
 
   const initialized = useRef(false);
   const guardUrlToState = useRef(false);
+  const lastStateWrittenUrl = useRef<string | null>(null);
 
   useEffect(() => {
     const handler = setTimeout(() => setDebouncedSearchTerm(searchTerm), 300);
@@ -80,6 +81,8 @@ function PaquetesClientContent({ paquetes, categorias }: PaquetesClientProps) {
   useEffect(() => {
     if (!searchParams) return;
     const urlParams = new URLSearchParams(searchParams.toString());
+    const serializedUrl = urlParams.toString();
+    const isOwnStateWrite = serializedUrl === lastStateWrittenUrl.current;
     
     const urlQ = urlParams.get('q') || '';
     const urlSlug = urlParams.get('slug') || null;
@@ -93,7 +96,11 @@ function PaquetesClientContent({ paquetes, categorias }: PaquetesClientProps) {
 
     let didApply = false;
 
-    if (searchTerm !== urlQ) {
+    // router.replace updates useSearchParams asynchronously. Do not feed that
+    // older debounced value back into the live input while the user is typing.
+    if (!isOwnStateWrite && searchTerm !== urlQ) {
+      // URL state is an external navigation source, so synchronize the controlled input here.
+      // eslint-disable-next-line react-hooks/set-state-in-effect
       setSearchTerm(urlQ);
       setDebouncedSearchTerm(urlQ);
       didApply = true;
@@ -161,6 +168,7 @@ function PaquetesClientContent({ paquetes, categorias }: PaquetesClientProps) {
 
     const nextUrl = params.toString();
     if (nextUrl !== currentUrl) {
+      lastStateWrittenUrl.current = nextUrl;
       router.replace(`${pathname}${nextUrl ? `?${nextUrl}` : ''}`, { scroll: false });
     }
   }, [
@@ -342,6 +350,8 @@ function PaquetesClientContent({ paquetes, categorias }: PaquetesClientProps) {
   ]);
 
   useEffect(() => {
+    // Reset pagination when filter state changes to avoid landing on an empty later page.
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     setCurrentPage(1);
   }, [debouncedSearchTerm, selectedCategorias, selectedTipos, selectedTransportes, selectedTags, selectedDestinos, selectedIncluye, sortBy, slug, mes]);
 

@@ -43,15 +43,20 @@ export async function GET(request: Request) {
       discountCents: Math.max(0, Number(data.discountCents ?? 0)),
       discountName: data.discountName ? String(data.discountName) : null,
       promotionCode: data.promotionCode ? String(data.promotionCode) : null,
-      originalAmountCents: Math.max(0, Number(data.originalAmountCents ?? data.amountCents ?? 0)),
+      originalAmountCents: Math.max(
+        Math.max(0, Number(data.amountCents ?? 0)) + Math.max(0, Number(data.discountCents ?? 0)),
+        Number(data.originalAmountCents ?? data.amountCents ?? 0)
+      ),
       currency: String(data.currency ?? 'ARS'),
       reservationCount: Math.max(1, Number(data.reservationCount ?? 1)),
       packages: Array.isArray(data.packages) ? data.packages : [],
       recordedAt: timestamp(data.recordedAt),
     };
   }).sort((a, b) => String(b.recordedAt ?? '').localeCompare(String(a.recordedAt ?? '')));
+  const purchaseByOrder = new Map(purchases.map((purchase) => [purchase.orderId, purchase]));
   const benefitsUsed = benefitSnapshot.docs.map((item) => {
     const data = item.data();
+    const purchase = purchaseByOrder.get(String(data.pedidoId ?? ''));
     return {
       id: item.id,
       tipo: String(data.tipo ?? ''),
@@ -63,6 +68,11 @@ export async function GET(request: Request) {
       moneda: String(data.moneda ?? 'ARS'),
       paquetes: Array.isArray(data.paquetes) ? data.paquetes : [],
       fechaUso: timestamp(data.fechaUso),
+      // Redemption totals cover only the eligible package subtotal. Expose the
+      // actual captured purchase total alongside it so the account history
+      // agrees with the receipt, order and reservation views.
+      compraTotalCents: purchase?.amountCents ?? null,
+      compraMoneda: purchase?.currency ?? null,
     };
   }).sort((a, b) => String(b.fechaUso ?? '').localeCompare(String(a.fechaUso ?? '')));
   return NextResponse.json({ profile: snapshot.data(), purchases, benefitsUsed });

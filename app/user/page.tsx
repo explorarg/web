@@ -53,6 +53,8 @@ type UsedBenefit = {
   moneda: string;
   paquetes: Array<{ title?: string; date?: string }>;
   fechaUso: string | null;
+  compraTotalCents?: number | null;
+  compraMoneda?: string | null;
 };
 
 type AvailableBenefit = {
@@ -146,9 +148,13 @@ export default function UserProfilePage() {
   }, [loadProfile, router]);
 
   const stats = useMemo(() => ({
-    savings: benefitsUsed.reduce((sum, item) => sum + item.montoDescuento, 0),
+    savingsByCurrency: purchases.reduce<Record<string, number>>((totals, item) => {
+      const currency = String(item.currency || 'ARS').toUpperCase();
+      totals[currency] = (totals[currency] ?? 0) + item.discountCents;
+      return totals;
+    }, {}),
     trips: purchases.reduce((sum, item) => sum + item.reservationCount, 0),
-  }), [benefitsUsed, purchases]);
+  }), [purchases]);
 
   async function saveProfile(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -226,7 +232,7 @@ export default function UserProfilePage() {
                   <section className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
                     <article className="rounded-2xl bg-[#183F4A] p-5 text-white sm:col-span-2"><div className="flex items-start justify-between"><div><p className="text-sm text-white/65">Tu nivel Explorarg</p><p className="mt-3 text-3xl font-semibold">{tierLabels[profile.tier] ?? 'Bronce'}</p></div><span className="rounded-xl bg-white/10 p-3"><BadgeCheck className="h-5 w-5 text-[#77DBD1]" /></span></div><div className="mt-5 flex items-center gap-2 border-t border-white/10 pt-4 text-xs text-white/65"><CalendarDays className="h-4 w-4" />Miembro desde {dateLabel(profile.fechaRegistro)}</div></article>
                     <article className="rounded-2xl border border-[#DCE8EC] bg-white p-5"><div className="flex items-center justify-between"><p className="text-sm text-slate-500">Viajes registrados</p><MapPinned className="h-4 w-4 text-[#248E91]" /></div><p className="mt-4 text-3xl font-semibold text-[#18333E]">{stats.trips}</p><p className="mt-1 text-xs text-slate-500">En compras confirmadas</p></article>
-                    <article className="rounded-2xl border border-[#DCE8EC] bg-white p-5"><div className="flex items-center justify-between"><p className="text-sm text-slate-500">Ahorro acumulado</p><TicketPercent className="h-4 w-4 text-[#248E91]" /></div><p className="mt-4 text-2xl font-semibold text-[#18333E]">{amount(stats.savings)}</p><p className="mt-1 text-xs text-slate-500">Con beneficios Explorarg</p></article>
+                    <article className="rounded-2xl border border-[#DCE8EC] bg-white p-5"><div className="flex items-center justify-between"><p className="text-sm text-slate-500">Ahorro acumulado</p><TicketPercent className="h-4 w-4 text-[#248E91]" /></div><div className="mt-4 space-y-1">{Object.entries(stats.savingsByCurrency).length ? Object.entries(stats.savingsByCurrency).map(([currency, value]) => <p key={currency} className="text-xl font-semibold text-[#18333E]">{amount(value, currency)}</p>) : <p className="text-2xl font-semibold text-[#18333E]">{amount(0)}</p>}</div><p className="mt-1 text-xs text-slate-500">Con beneficios Explorarg</p></article>
                   </section>
 
                   <section className="grid gap-6 xl:grid-cols-[1.25fr_0.75fr]">
@@ -254,7 +260,7 @@ export default function UserProfilePage() {
 
                 {section === 'benefits' && <div className="space-y-6">
                   <section className="rounded-2xl border border-[#DCE8EC] bg-white p-5 sm:p-7"><div><p className="text-xs font-bold uppercase tracking-[0.14em] text-[#248E91]">Para tu próximo viaje</p><h2 className="mt-1 text-2xl font-semibold">Beneficios disponibles</h2></div>{benefits.length ? <div className="mt-6 grid gap-3 md:grid-cols-2">{benefits.map((benefit) => <BenefitRow key={benefit.id} benefit={benefit} large />)}</div> : <EmptyState icon={Gift} title="Todavía no hay promociones disponibles" body="Volvé a revisar más adelante: los beneficios cambian durante el año." />}</section>
-                  <section className="rounded-2xl border border-[#DCE8EC] bg-white p-5 sm:p-7"><div><p className="text-xs font-bold uppercase tracking-[0.14em] text-[#248E91]">Tus redenciones</p><h2 className="mt-1 text-xl font-semibold">Historial de beneficios usados</h2></div>{benefitsUsed.length ? <div className="mt-5 divide-y divide-slate-100">{benefitsUsed.map((item) => <div key={item.id} className="flex flex-col justify-between gap-3 py-4 sm:flex-row sm:items-center"><div><p className="font-semibold">{item.nombre}</p><p className="mt-1 text-xs text-slate-500">{dateLabel(item.fechaUso)}{item.codigo ? ` · Código ${item.codigo}` : ''}</p></div><div className="text-sm sm:text-right"><p className="font-semibold text-[#187F80]">Ahorro {amount(item.montoDescuento, item.moneda)}</p><p className="mt-1 text-xs text-slate-500">Compra final {amount(item.montoFinal, item.moneda)}</p></div></div>)}</div> : <EmptyState icon={TicketPercent} title="Aún no usaste beneficios" body="Cuando apliques una promoción a una compra confirmada, aparecerá en tu historial." />}</section>
+                   <section className="rounded-2xl border border-[#DCE8EC] bg-white p-5 sm:p-7"><div><p className="text-xs font-bold uppercase tracking-[0.14em] text-[#248E91]">Tus redenciones</p><h2 className="mt-1 text-xl font-semibold">Historial de beneficios usados</h2></div>{benefitsUsed.length ? <div className="mt-5 divide-y divide-slate-100">{benefitsUsed.map((item) => <div key={item.id} className="flex flex-col justify-between gap-3 py-4 sm:flex-row sm:items-center"><div><p className="font-semibold">{item.nombre}</p><p className="mt-1 text-xs text-slate-500">{dateLabel(item.fechaUso)}{item.codigo ? ` · Código ${item.codigo}` : ''}</p></div><div className="text-sm sm:text-right"><p className="font-semibold text-[#187F80]">Ahorro {amount(item.montoDescuento, item.moneda)}</p><p className="mt-1 text-xs text-slate-500">Total pagado {amount(item.compraTotalCents ?? item.montoFinal, item.compraMoneda ?? item.moneda)}</p></div></div>)}</div> : <EmptyState icon={TicketPercent} title="Aún no usaste beneficios" body="Cuando apliques una promoción a una compra confirmada, aparecerá en tu historial." />}</section>
                 </div>}
               </div>
             </div>

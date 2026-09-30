@@ -135,6 +135,7 @@ export default function CheckoutClient(props: CheckoutClientProps) {
   const [communityQuote, setCommunityQuote] = useState<{ promotion: { kind: string; id: string; code?: string } | null; discount: { nombre: string; montoDescuento: number; montoFinal: number } | null; originalAmountCents: number; finalAmountCents: number; currency: string } | null>(null);
   const [isCheckingPromotion, setIsCheckingPromotion] = useState(false);
   const [communityQuoteError, setCommunityQuoteError] = useState('');
+  const [quoteRefresh, setQuoteRefresh] = useState(0);
   const [error, setError] = useState<string | null>(null);
   const [referralCode, setReferralCode] = useState<string | null>(null);
   const [cartData, setCartData] = useState<CartValidateResponse | null>(null);
@@ -156,7 +157,7 @@ export default function CheckoutClient(props: CheckoutClientProps) {
 
   useEffect(() => {
     let active = true;
-    let unsubscribe = () => {};
+    let unsubscribe = () => { };
     try {
       unsubscribe = onAuthStateChanged(getAuthInstance(), async (user) => {
         if (!active) return;
@@ -274,10 +275,10 @@ export default function CheckoutClient(props: CheckoutClientProps) {
     setForm((prev) =>
       !prev.roomType && prev.roomSelection.length === 0
         ? {
-            ...prev,
-            roomType: firstRoomType as CheckoutRoomType,
-            roomSelection: firstRoomSelection,
-          }
+          ...prev,
+          roomType: firstRoomType as CheckoutRoomType,
+          roomSelection: firstRoomSelection,
+        }
         : prev
     );
   }, [cartData?.items, isCartMode]);
@@ -405,6 +406,7 @@ export default function CheckoutClient(props: CheckoutClientProps) {
     ? Math.min(checkoutBaseSubtotal, Math.max(0, Number(communityQuote.discount.montoDescuento) || 0))
     : 0;
   const checkoutDisplayTotal = Math.max(0, total - appliedCommunityDiscount);
+  const promotionVerified = communityAuthReady && !isCheckingPromotion && Boolean(communityQuote) && !communityQuoteError;
   const checkoutSinglePassengerSurcharge = useMemo(
     () => getSinglePassengerSurchargeSummary({
       people: totalTravelers,
@@ -548,7 +550,7 @@ export default function CheckoutClient(props: CheckoutClientProps) {
 
   const handleSubmitForm = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (isCheckingPromotion || communityQuoteError || (communityUser && (!communityAuthReady || !communityQuote))) return;
+    if (!promotionVerified) return;
     setTouched({ firstName: true, lastName: true, email: true, phone: true, document: true, birthDate: true });
     const firstName = form.customerFirstName.trim();
     const lastName = form.customerLastName.trim();
@@ -596,7 +598,7 @@ export default function CheckoutClient(props: CheckoutClientProps) {
 
   const handleSubmitCompanions = (e: React.FormEvent) => {
     e.preventDefault();
-    if (isCheckingPromotion || communityQuoteError || (communityUser && (!communityAuthReady || !communityQuote))) return;
+    if (!promotionVerified) return;
     setCompanionsSubmitted(true);
     if (!hasAdditionalTravelers) {
       setStep('payment');
@@ -753,12 +755,6 @@ export default function CheckoutClient(props: CheckoutClientProps) {
 
   useEffect(() => {
     if (!communityAuthReady) return;
-    if (!communityUser) {
-      setCommunityQuote(null);
-      setCommunityQuoteError('');
-      setIsCheckingPromotion(false);
-      return;
-    }
     if (isCartMode && (!cartData?.items?.length || isValidating)) return;
     if (!isCartMode && (!experience || checkoutBaseSubtotal < 1)) return;
 
@@ -769,28 +765,28 @@ export default function CheckoutClient(props: CheckoutClientProps) {
     setIsCheckingPromotion(true);
     const timer = window.setTimeout(async () => {
       try {
-        const token = await communityUser.getIdToken();
+        const token = communityUser ? await communityUser.getIdToken() : null;
         const checkout = isCartMode
           ? {
-              cartId: props.cartId,
-              customerEmail: communityUser.email?.trim().toLowerCase(),
-              ...(couponCode.trim() ? { couponCode: couponCode.trim().toUpperCase() } : {}),
-              previewOnly: true,
-            }
+            cartId: props.cartId,
+            customerEmail: communityUser?.email?.trim().toLowerCase() || form.customerEmail.trim().toLowerCase() || undefined,
+            ...(couponCode.trim() ? { couponCode: couponCode.trim().toUpperCase() } : {}),
+            previewOnly: true,
+          }
           : {
-              customerEmail: communityUser.email?.trim().toLowerCase(),
-              ...(form.roomType ? { roomType: form.roomType.trim() } : {}),
-              ...(form.roomSelection.length > 0 ? { roomSelection: form.roomSelection } : {}),
-              ...(couponCode.trim() ? { couponCode: couponCode.trim().toUpperCase() } : {}),
-              slug: experience?.slug,
-              packageId: experience?.id,
-              date,
-              people,
-              previewOnly: true,
-            };
+            customerEmail: communityUser?.email?.trim().toLowerCase() || form.customerEmail.trim().toLowerCase() || undefined,
+            ...(form.roomType ? { roomType: form.roomType.trim() } : {}),
+            ...(form.roomSelection.length > 0 ? { roomSelection: form.roomSelection } : {}),
+            ...(couponCode.trim() ? { couponCode: couponCode.trim().toUpperCase() } : {}),
+            slug: experience?.slug,
+            packageId: experience?.id,
+            date,
+            people,
+            previewOnly: true,
+          };
         const response = await fetch('/api/mercadopago/preference', {
           method: 'POST',
-          headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+          headers: { 'Content-Type': 'application/json', ...(token ? { Authorization: `Bearer ${token}` } : {}) },
           body: JSON.stringify(checkout),
           signal: controller.signal,
         });
@@ -812,6 +808,7 @@ export default function CheckoutClient(props: CheckoutClientProps) {
       controller.abort();
     };
   }, [
+    quoteRefresh,
     communityAuthReady,
     communityUser,
     couponCode,
@@ -830,7 +827,7 @@ export default function CheckoutClient(props: CheckoutClientProps) {
 
   return (
     <div className="min-h-screen bg-slate-50/50 py-8 md:py-12 selection:bg-[#2BB8BF]/20 selection:text-[#2BB8BF]">
-      <div className="container mx-auto max-w-2xl px-4">
+      <div className="container mx-auto max-w-7xl px-4">
         {/* Header Navigation */}
         <motion.div
           initial={{ opacity: 0, y: -20 }}
@@ -904,7 +901,9 @@ export default function CheckoutClient(props: CheckoutClientProps) {
             })}
           </div>
 
-          <AnimatePresence mode="wait">
+          <div className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_360px] lg:items-start lg:gap-8">
+            <div className="min-w-0">
+              <AnimatePresence mode="wait">
             {step === 'form' ? (
               <motion.div
                 key="form-step"
@@ -913,71 +912,6 @@ export default function CheckoutClient(props: CheckoutClientProps) {
                 exit={{ opacity: 0, y: -10 }}
                 className="space-y-6"
               >
-                {/* Order Summary (Integrated at top) */}
-                <Card className="overflow-hidden border-0 shadow-lg shadow-slate-200/50 ring-1 ring-slate-200/60 rounded-2xl">
-                  <CardHeader className="bg-slate-50/50 pb-3 pt-4 px-6">
-                    <CardTitle className="text-xs font-bold uppercase tracking-widest text-slate-400">Resumen de pago</CardTitle>
-                  </CardHeader>
-                  <CardContent className="p-6">
-                    {isValidating ? (
-                      <div className="space-y-3">
-                        <Skeleton className="h-4 w-full" />
-                        <Skeleton className="h-4 w-2/3" />
-                      </div>
-                    ) : (
-                      <>
-                        <div className="space-y-3 text-sm text-slate-700">
-                          <div className="flex items-center justify-between gap-3">
-                            <span>Subtotal ({totalTravelers} pasajeros)</span>
-                            <span className="font-semibold text-slate-900">
-                              {formatAmountCents(checkoutBaseSubtotal, currency)}
-                            </span>
-                          </div>
-                          {communityUser && isCheckingPromotion && <div className="space-y-2 py-1" aria-label="Actualizando resumen"><Skeleton className="h-4 w-full" /><Skeleton className="h-4 w-2/3" /></div>}
-                          {appliedCommunityDiscount > 0 && <div className="flex items-center justify-between gap-3 text-[#187F80]">
-                            <span>{communityQuote?.discount?.nombre ?? 'Beneficio de comunidad'}</span>
-                            <span className="font-semibold">− {formatAmountCents(appliedCommunityDiscount, currency)}</span>
-                          </div>}
-                          {checkoutExtras.items
-                            .filter((extra: { code: string; label: string; amount: number }) => !isSinglePassengerSurchargeExtra(extra as any))
-                            .map((extra: { code: string; label: string; amount: number }) => (
-                            <div
-                              key={extra.label}
-                              className="flex items-center justify-between gap-3"
-                            >
-                              <span>{extra.label}</span>
-                              <span className="font-semibold text-slate-900">
-                                {formatAmountCents(extra.amount, currency)}
-                              </span>
-                            </div>
-                          ))}
-                          {checkoutSinglePassengerSurcharge.applies ? (
-                            <SinglePassengerSurchargeBreakdown
-                              label={checkoutSinglePassengerSurcharge.label}
-                              amountLabel={formatAmountCents(checkoutSinglePassengerSurcharge.amount, currency)}
-                              tone="teal"
-                            />
-                          ) : null}
-                          <div className="h-px bg-slate-200" />
-                          <div className="flex items-center justify-between gap-3">
-                            <span className="font-semibold text-slate-900">Total a pagar</span>
-                            <span className="text-xl font-bold text-[#2BB8BF]">{formatAmountCents(checkoutDisplayTotal, currency)}</span>
-                          </div>
-                          {isCartMode ? (
-                            <p className="text-xs font-medium text-slate-500">
-                              {`${totalTravelers} ${totalTravelers === 1 ? 'viajero' : 'viajeros'} · ${cartData?.items?.length ?? 0} destino(s)`}
-                            </p>
-                          ) : (
-                            <p className="text-xs font-medium text-slate-500">
-                              {`${people} ${people === 1 ? 'viajero' : 'viajeros'} · ${dateLabel}`}
-                            </p>
-                          )}
-                        </div>
-                      </>
-                    )}
-                  </CardContent>
-                </Card>
-
                 <Card className="overflow-hidden border-0 shadow-xl shadow-slate-200/50 ring-1 ring-slate-200/60 rounded-2xl">
                   <CardHeader className="bg-white pb-2 pt-6 px-6">
                     <CardTitle className="text-xl font-bold text-slate-900">Pasajero 1</CardTitle>
@@ -991,10 +925,10 @@ export default function CheckoutClient(props: CheckoutClientProps) {
                         <div className="space-y-1.5">
                           <Label htmlFor="customerFirstName" className="text-xs font-bold text-slate-700 ml-1">Nombre *</Label>
                           <Input
-                              id="customerFirstName"
-                              autoComplete="given-name"
+                            id="customerFirstName"
+                            autoComplete="given-name"
                             value={form.customerFirstName}
-                              onChange={(e) => setForm((f) => ({ ...f, customerFirstName: e.target.value }))}
+                            onChange={(e) => setForm((f) => ({ ...f, customerFirstName: e.target.value }))}
                             onBlur={() => setTouched((t) => ({ ...t, firstName: true }))}
                             placeholder="Ej: María"
                             className="h-11 rounded-xl border-slate-200 bg-slate-50/30 text-sm focus:ring-2 focus:ring-[#2BB8BF]/10 focus:border-[#2BB8BF]"
@@ -1004,8 +938,8 @@ export default function CheckoutClient(props: CheckoutClientProps) {
                         <div className="space-y-1.5">
                           <Label htmlFor="customerLastName" className="text-xs font-bold text-slate-700 ml-1">Apellido *</Label>
                           <Input
-                              id="customerLastName"
-                              autoComplete="family-name"
+                            id="customerLastName"
+                            autoComplete="family-name"
                             value={form.customerLastName}
                             onChange={(e) => setForm((f) => ({ ...f, customerLastName: e.target.value }))}
                             onBlur={() => setTouched((t) => ({ ...t, lastName: true }))}
@@ -1069,41 +1003,41 @@ export default function CheckoutClient(props: CheckoutClientProps) {
                           {birthDateError && <p className="text-[10px] font-bold text-red-500 ml-1">Fecha de nacimiento obligatoria</p>}
                         </div>
                         {!isCartMode && availableRoomTypes.length > 0 && (
-                        <div className="space-y-1.5 md:col-span-2">
-                          <Label htmlFor="roomType" className="text-xs font-bold text-slate-700 ml-1">
-                            Distribución de habitaciones *
-                          </Label>
-                          <Select
-                            value={form.roomType || undefined}
-                            onValueChange={(value) => {
-                              const roomType = value as ReservationRoomType;
-                              setForm((f) => ({
-                                ...f,
-                                roomType,
-                                roomSelection: [{ roomType, quantity: 1 }],
-                              }));
-                            }}
-                          >
-                            <SelectTrigger
-                              id="roomType"
-                              className="h-11 rounded-xl border-slate-200 bg-slate-50/30 text-sm focus:ring-2 focus:ring-[#2BB8BF]/10 focus:border-[#2BB8BF]"
+                          <div className="space-y-1.5 md:col-span-2">
+                            <Label htmlFor="roomType" className="text-xs font-bold text-slate-700 ml-1">
+                              Distribución de habitaciones *
+                            </Label>
+                            <Select
+                              value={form.roomType || undefined}
+                              onValueChange={(value) => {
+                                const roomType = value as ReservationRoomType;
+                                setForm((f) => ({
+                                  ...f,
+                                  roomType,
+                                  roomSelection: [{ roomType, quantity: 1 }],
+                                }));
+                              }}
                             >
-                              <SelectValue placeholder="Elegí un tipo de habitación" />
-                            </SelectTrigger>
-                            <SelectContent>
-                              {availableRoomTypeOptions.map((option) => (
-                                <SelectItem key={option.id} value={option.id}>
-                                  {option.label}
-                                </SelectItem>
-                              ))}
-                            </SelectContent>
-                          </Select>
-                          <p className={`text-[10px] font-medium ml-1 ${roomTypeCompatible ? 'text-slate-500' : 'text-red-500'}`}>
-                            {roomTypeCompatible
-                              ? `Habitación elegida: ${getPackageRoomTypeLabel({ roomTypes: availableRoomTypes, roomTypeOptions: availableRoomTypeOptions } as any, form.roomType)}.`
-                              : 'Seleccioná uno de los tipos de habitación disponibles.'}
-                          </p>
-                        </div>
+                              <SelectTrigger
+                                id="roomType"
+                                className="h-11 rounded-xl border-slate-200 bg-slate-50/30 text-sm focus:ring-2 focus:ring-[#2BB8BF]/10 focus:border-[#2BB8BF]"
+                              >
+                                <SelectValue placeholder="Elegí un tipo de habitación" />
+                              </SelectTrigger>
+                              <SelectContent>
+                                {availableRoomTypeOptions.map((option) => (
+                                  <SelectItem key={option.id} value={option.id}>
+                                    {option.label}
+                                  </SelectItem>
+                                ))}
+                              </SelectContent>
+                            </Select>
+                            <p className={`text-[10px] font-medium ml-1 ${roomTypeCompatible ? 'text-slate-500' : 'text-red-500'}`}>
+                              {roomTypeCompatible
+                                ? `Habitación elegida: ${getPackageRoomTypeLabel({ roomTypes: availableRoomTypes, roomTypeOptions: availableRoomTypeOptions } as any, form.roomType)}.`
+                                : 'Seleccioná uno de los tipos de habitación disponibles.'}
+                            </p>
+                          </div>
                         )}
                       </div>
 
@@ -1127,7 +1061,7 @@ export default function CheckoutClient(props: CheckoutClientProps) {
 
                       <Button
                         type="submit"
-                        disabled={!communityAuthReady || isCheckingPromotion || Boolean(communityQuoteError) || (communityUser !== null && !communityQuote)}
+                        disabled={!promotionVerified}
                         className="group h-12 w-full rounded-xl bg-[#2BB8BF] text-base font-bold text-white shadow-md shadow-[#2BB8BF]/10 transition-all hover:bg-[#25A1A7] active:scale-[0.98]"
                       >
                         {hasAdditionalTravelers ? 'Continuar con pasajeros' : 'Continuar al pago'}
@@ -1166,6 +1100,8 @@ export default function CheckoutClient(props: CheckoutClientProps) {
                               <div className="space-y-1.5">
                                 <Label className="text-xs font-bold text-slate-700 ml-1">Nombre *</Label>
                                 <Input
+                                  aria-label={`Nombre del pasajero ${index + 2}`}
+                                  autoComplete="given-name"
                                   value={traveler.firstName}
                                   onChange={(e) =>
                                     setForm((prev) => ({
@@ -1183,6 +1119,8 @@ export default function CheckoutClient(props: CheckoutClientProps) {
                               <div className="space-y-1.5">
                                 <Label className="text-xs font-bold text-slate-700 ml-1">Apellido *</Label>
                                 <Input
+                                  aria-label={`Apellido del pasajero ${index + 2}`}
+                                  autoComplete="family-name"
                                   value={traveler.lastName}
                                   onChange={(e) =>
                                     setForm((prev) => ({
@@ -1216,6 +1154,8 @@ export default function CheckoutClient(props: CheckoutClientProps) {
                               <div className="space-y-1.5">
                                 <Label className="text-xs font-bold text-slate-700 ml-1">Teléfono *</Label>
                                 <Input
+                                  aria-label={`Teléfono del pasajero ${index + 2}`}
+                                  autoComplete="tel"
                                   value={traveler.phone}
                                   onChange={(e) =>
                                     setForm((prev) => ({
@@ -1233,6 +1173,7 @@ export default function CheckoutClient(props: CheckoutClientProps) {
                               <div className="space-y-1.5">
                                 <Label className="text-xs font-bold text-slate-700 ml-1">DNI *</Label>
                                 <Input
+                                  aria-label={`Documento del pasajero ${index + 2}`}
                                   value={traveler.document}
                                   onChange={(e) =>
                                     setForm((prev) => ({
@@ -1291,7 +1232,7 @@ export default function CheckoutClient(props: CheckoutClientProps) {
                         </Button>
                         <Button
                           type="submit"
-                          disabled={isCheckingPromotion || Boolean(communityQuoteError) || (communityUser !== null && (!communityAuthReady || !communityQuote))}
+                          disabled={!promotionVerified}
                           className="group h-12 w-full rounded-xl bg-[#2BB8BF] text-base font-bold text-white shadow-md shadow-[#2BB8BF]/10 transition-all hover:bg-[#25A1A7] active:scale-[0.98] sm:min-w-0 sm:flex-1"
                         >
                           Continuar al pago
@@ -1311,19 +1252,15 @@ export default function CheckoutClient(props: CheckoutClientProps) {
                 className="space-y-6"
               >
                 <Card className="overflow-hidden border-0 shadow-xl shadow-slate-200/50 ring-1 ring-slate-200/60 rounded-2xl">
-                  <CardHeader className="bg-white pb-6 pt-8 text-center px-6">
+                  <CardHeader className="bg-white pt-4 text-center px-6">
                     <CardTitle className="text-2xl font-bold text-slate-900">Método de Pago</CardTitle>
                     <p className="text-sm font-medium text-slate-500 mt-1">
                       Seleccioná tu forma de pago preferida.
                     </p>
                   </CardHeader>
                   <CardContent className="p-6 space-y-6">
-                    <div className="rounded-xl border border-[#D8E8E8] bg-[#F8FCFC] p-4">
-                      {appliedCommunityDiscount > 0 && <div className="mb-2 flex items-center justify-between gap-3 text-sm text-[#187F80]"><span>{communityQuote?.discount?.nombre}</span><span className="font-semibold">− {formatAmountCents(appliedCommunityDiscount, currency)}</span></div>}
-                      <div className="flex items-center justify-between gap-3"><span className="text-sm font-medium text-slate-600">Total a pagar</span><span className="text-lg font-bold text-[#183F4A]">{formatAmountCents(checkoutDisplayTotal, currency)}</span></div>
-                    </div>
                     <div className="rounded-2xl border border-slate-200 bg-[#F8FAFD] p-4 text-sm">
-                      {communityUser ? <><p className="font-semibold text-[#153F4A]">Cuenta Explorarg conectada</p><p className="mt-1 text-xs leading-5 text-[#60777D]">Esta compra se asociará a {communityUser.email}. Tus datos y beneficios se actualizan automáticamente.</p></> : <><p className="font-semibold text-[#183F4A]">¿Sos parte de la comunidad?</p><p className="mt-1 text-xs leading-5 text-[#60777D]">Ingresá a tu cuenta para asociar la compra y consultar los beneficios disponibles.</p><Link href="/login?next=%2Fcheckout" className="mt-2 inline-flex font-semibold text-[#167F82] underline underline-offset-4">Iniciar sesión</Link></>}
+                      {communityUser ? <><p className="font-semibold text-[#153F4A]">Cuenta Explorarg conectada</p><p className="mt-1 text-xs leading-5 text-[#60777D]">Esta compra se asociará a <strong>{communityUser.email}</strong></p></> : <><p className="font-semibold text-[#183F4A]">¿Sos parte de la comunidad?</p><p className="mt-1 text-xs leading-5 text-[#60777D]">Ingresá a tu cuenta para asociar la compra y consultar los beneficios disponibles.</p><Link href="/login?next=%2Fcheckout" className="mt-2 inline-flex font-semibold text-[#167F82] underline underline-offset-4">Iniciar sesión</Link></>}
                     </div>
                     <div className="rounded-2xl border border-[#D8E8E8] bg-white p-4 sm:p-5">
                       <div className="flex items-start gap-3"><span className="rounded-xl bg-[#E7F6F4] p-2.5 text-[#17888B]"><TicketPercent className="h-4 w-4" /></span><div><p className="font-semibold text-[#183F4A]">Beneficios y cupones</p><p className="mt-1 text-xs leading-5 text-slate-500">Si tenés un cupón, ingresalo y el precio se actualiza solo.</p></div></div>
@@ -1340,7 +1277,7 @@ export default function CheckoutClient(props: CheckoutClientProps) {
                         whileHover={{ scale: 1.01, borderColor: '#009EE3' }}
                         whileTap={{ scale: 0.99 }}
                         onClick={() => isCartMode ? createMercadoPagoPreferenceForCart() : createMercadoPagoPreferenceForLegacy()}
-                        disabled={isLoading || isCheckingPromotion || Boolean(communityQuoteError) || (communityUser !== null && (!communityAuthReady || !communityQuote)) || (isCartMode && !(cartData?.ok ?? false))}
+                        disabled={isLoading || !promotionVerified || (isCartMode && !(cartData?.ok ?? false))}
                         className="group relative w-full overflow-hidden rounded-2xl border border-slate-200 bg-white p-6 transition-all hover:shadow-lg disabled:opacity-50"
                       >
                         <div className="flex items-center justify-between gap-4">
@@ -1390,7 +1327,7 @@ export default function CheckoutClient(props: CheckoutClientProps) {
                 </Card>
               </motion.div>
             )}
-          </AnimatePresence>
+              </AnimatePresence>
 
           {/* Trust badges (at the bottom) */}
           <div className="flex flex-col items-center gap-4 pt-4">
@@ -1403,6 +1340,35 @@ export default function CheckoutClient(props: CheckoutClientProps) {
               <img src="https://upload.wikimedia.org/wikipedia/commons/thumb/5/5c/Visa_Inc._logo_%282021%E2%80%93present%29.svg/3840px-Visa_Inc._logo_%282021%E2%80%93present%29.svg.png" alt="Visa" className="h-2.5" />
               <img src="https://upload.wikimedia.org/wikipedia/commons/2/2a/Mastercard-logo.svg" alt="Mastercard" className="h-3.5" />
             </div>
+          </div>
+            </div>
+
+            <aside className="min-w-0 lg:sticky lg:top-6">
+              <Card className="overflow-hidden rounded-2xl border-0 shadow-lg shadow-slate-200/50 ring-1 ring-slate-200/70 backdrop-blur supports-[backdrop-filter]:bg-white/95">
+                <CardHeader className="bg-slate-50/70 px-5 pb-3 pt-4 sm:px-6">
+                  <CardTitle className="text-xs font-bold uppercase tracking-widest text-slate-500">Resumen de pago</CardTitle>
+                </CardHeader>
+                <CardContent className="px-5 py-4 sm:px-6">
+                  {!promotionVerified || isValidating ? (
+                    <div className="space-y-3" aria-label="Verificando precio y beneficios" aria-busy="true">
+                      <div className="flex items-center gap-3"><Skeleton className="h-8 w-8 rounded-lg" /><div className="flex-1 space-y-2"><Skeleton className="h-3 w-2/5" /><Skeleton className="h-3 w-3/5" /></div></div>
+                      <Skeleton className="h-px w-full" /><Skeleton className="h-4 w-full" /><Skeleton className="h-4 w-3/4" /><Skeleton className="h-10 w-full rounded-xl" />
+                      {communityQuoteError && <div role="alert" className="rounded-xl bg-rose-50 p-3 text-xs text-rose-700"><p className="font-semibold">No pudimos verificar el precio y los beneficios</p><p className="mt-1">{communityQuoteError}</p><Button type="button" variant="outline" size="sm" className="mt-3 h-9 border-rose-200 bg-white text-rose-700" onClick={() => setQuoteRefresh((value) => value + 1)}>Reintentar verificación</Button></div>}
+                    </div>
+                  ) : (
+                    <div className="space-y-2.5 text-sm text-slate-700">
+                      <div className="flex items-center justify-between gap-3"><span>Subtotal · {totalTravelers} {totalTravelers === 1 ? 'pasajero' : 'pasajeros'}</span><span className="font-semibold text-slate-900">{formatAmountCents(checkoutBaseSubtotal, currency)}</span></div>
+                      {checkoutExtras.items.filter((extra: { code: string; label: string; amount: number }) => !isSinglePassengerSurchargeExtra(extra as any)).map((extra: { code: string; label: string; amount: number }) => <div key={extra.label} className="flex items-center justify-between gap-3"><span>{extra.label}</span><span className="font-semibold text-slate-900">{formatAmountCents(extra.amount, currency)}</span></div>)}
+                      {checkoutSinglePassengerSurcharge.applies && <SinglePassengerSurchargeBreakdown label={checkoutSinglePassengerSurcharge.label} amountLabel={formatAmountCents(checkoutSinglePassengerSurcharge.amount, currency)} tone="teal" />}
+                      {appliedCommunityDiscount > 0 && <div className="flex items-center justify-between gap-3 font-medium text-[#187F80]"><span>{communityQuote?.discount?.nombre ?? 'Beneficio de comunidad'}</span><span>− {formatAmountCents(appliedCommunityDiscount, currency)}</span></div>}
+                      <div className="h-px bg-slate-200" />
+                      <div className="flex items-center justify-between gap-3"><span className="font-semibold text-slate-900">Total a pagar</span><span className="text-lg font-bold text-[#168E96] sm:text-xl">{formatAmountCents(checkoutDisplayTotal, currency)}</span></div>
+                      <p className="text-xs font-medium capitalize text-slate-500">{isCartMode ? `${totalTravelers} ${totalTravelers === 1 ? 'viajero' : 'viajeros'} · ${cartData?.items?.length ?? 0} destino(s)` : `${people} ${people === 1 ? 'viajero' : 'viajeros'} · ${dateLabel}`}</p>
+                    </div>
+                  )}
+                </CardContent>
+              </Card>
+            </aside>
           </div>
         </div>
       </div>

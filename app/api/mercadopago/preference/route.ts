@@ -618,10 +618,10 @@ export async function POST(request: Request) {
     }
 
     const totalPeople = itemsSnapshot.reduce((sum, item) => sum + Math.max(0, Number(item.people ?? 0) || 0), 0);
-    if (totalPeople > 1 && (passengerDetails?.length ?? 0) !== totalPeople - 1) {
+    if (!previewOnly && totalPeople > 1 && (passengerDetails?.length ?? 0) !== totalPeople - 1) {
       return NextResponse.json({ error: 'Faltan los datos de los demás pasajeros.' }, { status: 400 });
     }
-    if (totalPeople <= 1 && (passengerDetails?.length ?? 0) > 0) {
+    if (!previewOnly && totalPeople <= 1 && (passengerDetails?.length ?? 0) > 0) {
       return NextResponse.json({ error: 'No corresponde cargar acompañantes para esta compra.' }, { status: 400 });
     }
 

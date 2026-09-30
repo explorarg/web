@@ -26,6 +26,7 @@ export async function recordCommunityPurchase(input: {
   const eventRef = db.collection('communityPurchaseEvents').doc(eventId);
   const currency = String(input.currency || 'ars').toUpperCase();
   const amount = Math.max(0, Math.round(input.amountCents || 0));
+  const discount = Math.max(0, Math.round(input.discountCents ?? 0));
   const count = Math.max(1, Math.floor(input.reservationCount || 1));
   const recordedAt = Timestamp.now();
 
@@ -51,10 +52,14 @@ export async function recordCommunityPurchase(input: {
       orderId,
       paymentId: String(input.paymentId),
       amountCents: amount,
-      discountCents: Math.max(0, Math.round(input.discountCents ?? 0)),
+      discountCents: discount,
       discountName: String(input.discountName ?? '').trim() || null,
       promotionCode: String(input.promotionCode ?? '').trim().toUpperCase() || null,
-      originalAmountCents: Math.max(amount, Math.round(input.originalAmountCents ?? amount)),
+      // The charged amount includes extras; promotions only discount eligible
+      // package subtotal. Therefore the comparable pre-discount purchase total
+      // is the final charged total plus the applied discount (not the eligible
+      // subtotal stored on the redemption itself).
+      originalAmountCents: amount + discount,
       currency,
       reservationCount: count,
       packages: (input.packages ?? []).slice(0, 50),
