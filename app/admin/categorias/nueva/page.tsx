@@ -146,7 +146,7 @@ export default function NuevaCategoriaPage() {
   return (
     <ProtectedRoute>
       <AdminLayout>
-        <div className="max-w-4xl mx-auto space-y-6 pb-12">
+        <div className="mx-auto space-y-6 pb-12">
           <div className="flex items-center gap-4">
             <Button asChild variant="outline" size="sm">
               <Link href="/admin/categorias">

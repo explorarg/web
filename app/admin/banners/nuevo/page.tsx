@@ -76,7 +76,7 @@ export default function NuevoBannerPage() {
   return (
     <ProtectedRoute>
       <AdminLayout>
-        <div className="max-w-4xl mx-auto space-y-6 pb-12">
+        <div className="mx-auto space-y-6 pb-12">
           <div className="flex items-center justify-between">
             <div>
               <h1 className="text-lg font-semibold text-gray-900 tracking-tight">Nuevo banner</h1>
