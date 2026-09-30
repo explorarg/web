@@ -206,22 +206,23 @@ export default function AdminDashboard() {
         let totalCancelled = 0;
         const nonCancelled: Reservation[] = [];
 
-        const paymentsByReservation = new Map<string, ReservaPaymentEvent[]>();
         const reservasWithId = ventas.filter((r) => Boolean(r.id)).slice(0, 400);
-        const CHUNK_SIZE = 30;
-        for (let i = 0; i < reservasWithId.length; i += CHUNK_SIZE) {
-          const chunk = reservasWithId.slice(i, i + CHUNK_SIZE);
-          await Promise.all(
-            chunk.map(async (r) => {
-              try {
-                const p = await getReservaPayments(r.id!, { limit: 20 });
-                if (p && p.length > 0) paymentsByReservation.set(r.id!, p);
-              } catch {
-                /* noop */
-              }
-            })
-          );
-        }
+        // Avoid serial batches: payment subcollections are independent, and the
+        // previous 14 sequential rounds added the latency of every round to the
+        // dashboard's critical path. Keep the same cap and tolerate per-reserva
+        // failures, but fetch them concurrently.
+        const paymentResults = await Promise.all(
+          reservasWithId.map(async (r) => {
+            try {
+              return [r.id!, await getReservaPayments(r.id!, { limit: 20 })] as const;
+            } catch {
+              return [r.id!, [] as ReservaPaymentEvent[]] as const;
+            }
+          })
+        );
+        const paymentsByReservation = new Map(
+          paymentResults.filter(([, payments]) => payments.length > 0)
+        );
 
         for (const r of ventas) {
           const statuses = buildVentaStatuses(r);

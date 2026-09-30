@@ -280,7 +280,7 @@ export default function NewsletterPage() {
 
           {/* Estadísticas */}
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-            <div className="bg-white p-6 rounded-lg border shadow-sm">
+            <div className="bg-white p-6 rounded-lg border shadow-sm border-[#BFD8EE]">
               <div className="flex items-center gap-3">
                 <Mail className="h-8 w-8 text-blue-600" />
                 <div>
@@ -289,7 +289,7 @@ export default function NewsletterPage() {
                 </div>
               </div>
             </div>
-            <div className="bg-white p-6 rounded-lg border shadow-sm">
+            <div className="bg-white p-6 rounded-lg border shadow-sm border-[#BFD8EE]">
               <div className="flex items-center gap-3">
                 <UserCheck className="h-8 w-8 text-green-600" />
                 <div>
@@ -298,7 +298,7 @@ export default function NewsletterPage() {
                 </div>
               </div>
             </div>
-            <div className="bg-white p-6 rounded-lg border shadow-sm">
+            <div className="bg-white p-6 rounded-lg border shadow-sm border-[#BFD8EE]">
               <div className="flex items-center gap-3">
                 <UserX className="h-8 w-8 text-red-600" />
                 <div>

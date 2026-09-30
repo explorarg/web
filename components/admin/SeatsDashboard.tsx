@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useAuth } from '@/hooks/useAuth';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -26,6 +26,7 @@ import SeatMap from '@/components/seats/SeatMap';
 import type { DepartureSeat, SeatStatus } from '@/types';
 import { getReservaById } from '@/lib/reservas';
 import { buildSeatReportHtml, type SeatReportReservation } from '@/lib/seats/report';
+import { getOperationalDepartureDates, resolveDepartureConfig } from '@/lib/packages/resolve-departure';
 import {
   Search,
   Download,
@@ -39,13 +40,26 @@ import {
   Armchair,
   Info,
 } from 'lucide-react';
-import ArgentineCalendarPicker from '@/components/ui/argentine-calendar-picker';
 
 type Props = {
   paquetes: Paquete[];
   initialPackageId?: string;
   initialDate?: string;
 };
+
+function seatDepartureDates(paquete: Paquete): string[] {
+  return getOperationalDepartureDates(paquete).filter((departureDate) => {
+    const config = resolveDepartureConfig(paquete, departureDate);
+    return config.enabled && config.seatsEnabled && Boolean(config.seatLayoutId);
+  });
+}
+
+function formatDepartureDate(value: string): string {
+  const parsed = new Date(`${value}T12:00:00`);
+  return Number.isNaN(parsed.getTime()) ? value : new Intl.DateTimeFormat('es-AR', {
+    weekday: 'long', day: 'numeric', month: 'long', year: 'numeric',
+  }).format(parsed);
+}
 
 function translateSeatStatus(status: SeatStatus | string): { label: string; className: string } {
   switch (status) {
@@ -98,10 +112,15 @@ const SEAT_CATEGORY_COLORS: Record<string, { bg: string; border: string; text: s
 
 export default function SeatsDashboard({ paquetes, initialPackageId, initialDate }: Props) {
   const { user } = useAuth();
-  const [selectedPackageId, setSelectedPackageId] = useState<string>(
-    initialPackageId && paquetes.some((p) => p.id === initialPackageId) ? initialPackageId : (paquetes[0]?.id ?? '')
+  const activePackages = useMemo(
+    () => paquetes.filter((pkg) => pkg.visible !== false && pkg.bookingConfig?.enabled !== false && seatDepartureDates(pkg).length > 0),
+    [paquetes]
   );
-  const [date, setDate] = useState(() => initialDate || new Date().toISOString().slice(0, 10));
+  const initialPackage = activePackages.find((pkg) => pkg.id === initialPackageId) ?? null;
+  const [selectedPackageId, setSelectedPackageId] = useState<string>(
+    initialPackage?.id ?? ''
+  );
+  const [date, setDate] = useState(() => initialPackage && initialDate && seatDepartureDates(initialPackage).includes(initialDate) ? initialDate : '');
   const [data, setData] = useState<any>(null);
   const [loading, setLoading] = useState(false);
   const [selectedSeatIds, setSelectedSeatIds] = useState<string[]>([]);
@@ -118,20 +137,23 @@ export default function SeatsDashboard({ paquetes, initialPackageId, initialDate
   const [exporting, setExporting] = useState(false);
   const fetchStateRequestId = useRef(0);
 
-  useEffect(() => {
-    if (initialPackageId && paquetes.some((p) => p.id === initialPackageId)) {
-      setSelectedPackageId(initialPackageId);
-    }
-    if (initialDate) setDate(initialDate);
-  }, [initialPackageId, initialDate, paquetes]);
-
   const paquete = useMemo(
-    () => paquetes.find((p) => p.id === selectedPackageId) ?? null,
-    [paquetes, selectedPackageId]
+    () => activePackages.find((p) => p.id === selectedPackageId) ?? null,
+    [activePackages, selectedPackageId]
   );
+  const availableDates = useMemo(() => paquete ? seatDepartureDates(paquete) : [], [paquete]);
 
-  const fetchState = async () => {
-    if (!user || !selectedPackageId || !date) return;
+  useEffect(() => {
+    if (initialPackageId && activePackages.some((p) => p.id === initialPackageId)) setSelectedPackageId(initialPackageId);
+    if (initialDate && initialPackage && seatDepartureDates(initialPackage).includes(initialDate)) setDate(initialDate);
+  }, [initialPackageId, initialDate, activePackages, initialPackage]);
+
+  const fetchState = useCallback(async () => {
+    if (!user || !selectedPackageId || !date) {
+      setData(null);
+      setSelectedSeatIds([]);
+      return;
+    }
     const requestId = ++fetchStateRequestId.current;
     setLoading(true);
     try {
@@ -157,11 +179,11 @@ export default function SeatsDashboard({ paquetes, initialPackageId, initialDate
         setLoading(false);
       }
     }
-  };
+  }, [user, selectedPackageId, date]);
 
   useEffect(() => {
     void fetchState();
-  }, [user, selectedPackageId, date]);
+  }, [fetchState]);
 
   const seats: DepartureSeat[] = Array.isArray(data?.seats) ? data.seats : [];
 
@@ -329,68 +351,98 @@ export default function SeatsDashboard({ paquetes, initialPackageId, initialDate
 
   return (
     <div className="flex flex-col gap-6">
-      <div className="flex flex-col gap-1">
-        <h1 className="text-lg font-semibold text-gray-900 tracking-tight">Butacas por salida</h1>
-        <p className="text-sm text-gray-500">Gestioná el mapa de butacas, bloques y asignaciones.</p>
+      <div className="flex flex-col justify-between gap-4 sm:flex-row sm:items-end">
+        <div>
+          <h1 className="mt-1 text-lg font-bold tracking-tight text-slate-900">Gestión de butacas</h1>
+          <p className="mt-1 text-sm text-slate-500">Elegí una salida activa para consultar y administrar sus asientos.</p>
+        </div>
+        {selectedPackageId && date && <div className="flex w-full gap-2 sm:w-auto">
+          <Button variant="outline" onClick={() => void handleExportTaquilla()} disabled={loading || exporting || !data?.enabled || seats.length === 0} className="h-10 flex-1 sm:flex-none">
+            {exporting ? <RefreshCw className="mr-2 h-4 w-4 animate-spin" /> : <Download className="mr-2 h-4 w-4" />}
+            {exporting ? 'Generando…' : 'Exportar taquilla'}
+          </Button>
+          <Button variant="outline" size="icon" aria-label="Actualizar mapa" onClick={() => void fetchState()} disabled={loading} className="h-10 w-10 shrink-0">
+            <RefreshCw className={`h-4 w-4 ${loading ? 'animate-spin' : ''}`} />
+          </Button>
+        </div>}
       </div>
 
-      <div className="flex flex-col gap-4 rounded-2xl border border-gray-200 bg-white p-4 shadow-sm sm:flex-row sm:items-start">
-        <div className="flex flex-1 flex-col gap-1">
-          <Label className="text-xs font-medium text-gray-500">Paquete</Label>
-          <Select value={selectedPackageId} onValueChange={setSelectedPackageId}>
-            <SelectTrigger className="h-9 w-full">
-              <SelectValue placeholder="Seleccioná un paquete" />
-            </SelectTrigger>
-            <SelectContent>
-              {paquetes.map((pkg) => (
-                <SelectItem key={pkg.id} value={pkg.id}>
-                  {pkg.titulo}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-        </div>
-        <div className="flex flex-col gap-1">
-          <Label className="text-xs font-medium text-gray-500">Fecha</Label>
-          <div className="w-72">
-            <ArgentineCalendarPicker
-              value={date}
-              onChange={setDate}
-              availableDates={paquete?.salidas?.map((s: any) => String(s?.fecha ?? '').trim()).filter(Boolean) ?? []}
-              disabled={loading || !selectedPackageId}
-            />
+      <section className="grid gap-4 rounded-2xl sm:grid-cols-2">
+        <div className={`rounded-xl border p-4 transition-colors ${selectedPackageId ? 'border-emerald-200 bg-emerald-50/50' : 'border-cyan-200 bg-cyan-50/60'}`}>
+          <div className="flex items-center gap-3">
+            <span className={`flex h-8 w-8 items-center justify-center rounded-full text-sm font-bold ${selectedPackageId ? 'bg-emerald-600 text-white' : 'bg-cyan-700 text-white'}`}>{selectedPackageId ? '✓' : '1'}</span>
+            <div><p className="text-[10px] font-bold uppercase tracking-[0.14em] text-slate-500">Paso 1</p><p className="text-sm font-semibold text-slate-900">Seleccioná un paquete</p></div>
+          </div>
+          <div className="mt-3">
+            <Label htmlFor="seat-package" className="sr-only">Paquete activo</Label>
+            <Select value={selectedPackageId} onValueChange={(value) => {
+              setSelectedPackageId(value);
+              setDate('');
+              setData(null);
+              setSelectedSeatIds([]);
+              setSelectionMode(false);
+            }}>
+              <SelectTrigger id="seat-package" className="h-11 w-full bg-white">
+                <SelectValue placeholder="Elegí un paquete activo" />
+              </SelectTrigger>
+              <SelectContent>
+                {activePackages.map((pkg) => <SelectItem key={pkg.id} value={pkg.id}>{pkg.titulo}</SelectItem>)}
+              </SelectContent>
+            </Select>
+            {activePackages.length === 0 && <p className="mt-2 text-xs text-amber-700">No hay paquetes activos con salidas y mapa de butacas configurados.</p>}
           </div>
         </div>
-        <div className="flex items-center gap-2">
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={() => void handleExportTaquilla()}
-            disabled={loading || exporting || !data?.enabled || seats.length === 0}
-            className="h-9"
-          >
-            {exporting ? (
-              <span className="inline-flex items-center gap-2">
-                <RefreshCw className="h-3.5 w-3.5 animate-spin" />
-                Generando
-              </span>
-            ) : (
-              <span className="inline-flex items-center gap-2">
-                <Download className="h-3.5 w-3.5" />
-                Exportar PDF
-              </span>
-            )}
-          </Button>
-          <Button variant="ghost" size="sm" onClick={() => void fetchState()} disabled={loading} className="h-9">
-            <RefreshCw className={`h-3.5 w-3.5 ${loading ? 'animate-spin' : ''}`} />
-          </Button>
+
+        <div className={`rounded-xl border p-4 transition-colors ${date ? 'border-emerald-200 bg-emerald-50/50' : selectedPackageId ? 'border-cyan-200 bg-cyan-50/60' : 'border-slate-200 bg-slate-50'}`}>
+          <div className="flex items-center gap-3">
+            <span className={`flex h-8 w-8 items-center justify-center rounded-full text-sm font-bold ${date ? 'bg-emerald-600 text-white' : selectedPackageId ? 'bg-cyan-700 text-white' : 'bg-slate-300 text-white'}`}>{date ? '✓' : '2'}</span>
+            <div><p className="text-[10px] font-bold uppercase tracking-[0.14em] text-slate-500">Paso 2</p><p className="text-sm font-semibold text-slate-900">Elegí una fecha disponible</p></div>
+          </div>
+          <div className="mt-3">
+            <Label htmlFor="seat-departure-date" className="sr-only">Fecha de salida</Label>
+            <Select value={date} onValueChange={(value) => {
+              setDate(value);
+              setData(null);
+              setSelectedSeatIds([]);
+              setSelectionMode(false);
+            }} disabled={!selectedPackageId || availableDates.length === 0 || loading}>
+              <SelectTrigger id="seat-departure-date" className="h-11 w-full bg-white disabled:bg-slate-100">
+                <SelectValue placeholder={!selectedPackageId ? 'Primero seleccioná un paquete' : 'Elegí una salida habilitada'} />
+              </SelectTrigger>
+              <SelectContent>
+                {availableDates.map((departureDate) => <SelectItem key={departureDate} value={departureDate}>{formatDepartureDate(departureDate)}</SelectItem>)}
+              </SelectContent>
+            </Select>
+            {selectedPackageId && availableDates.length === 0 && <p className="mt-2 text-xs text-amber-700">Este paquete no tiene fechas activas con butacas configuradas.</p>}
+          </div>
         </div>
-      </div>
+      </section>
 
       <div className="grid gap-6 lg:grid-cols-[1fr_320px]">
         <div className="min-w-0">
-          {data && data.enabled && data.template && Array.isArray(data.seats) ? (
+          {!selectedPackageId ? (
+            <div className="rounded-2xl border border-dashed border-slate-300 bg-white p-10 text-center">
+              <Armchair className="mx-auto h-9 w-9 text-cyan-700" />
+              <h2 className="mt-3 text-base font-semibold text-slate-900">Empezá eligiendo un paquete</h2>
+              <p className="mt-1 text-sm text-slate-500">Solo aparecen paquetes activos con mapa de butacas disponible.</p>
+            </div>
+          ) : !date ? (
+            <div className="rounded-2xl border border-dashed border-slate-300 bg-white p-10 text-center">
+              <Armchair className="mx-auto h-9 w-9 text-cyan-700" />
+              <h2 className="mt-3 text-base font-semibold text-slate-900">Ahora elegí una salida</h2>
+              <p className="mt-1 text-sm text-slate-500">Mostramos únicamente las fechas habilitadas para {paquete?.titulo ?? 'este paquete'}.</p>
+            </div>
+          ) : loading ? (
+            <div className="animate-pulse space-y-4 rounded-2xl border border-slate-200 bg-white p-5 sm:p-6">
+              <div className="h-5 w-48 rounded bg-slate-200" />
+              <div className="grid grid-cols-5 gap-3 sm:grid-cols-8">{Array.from({ length: 24 }, (_, index) => <div key={index} className="h-11 rounded-lg bg-slate-100" />)}</div>
+            </div>
+          ) : data && data.enabled && data.template && Array.isArray(data.seats) ? (
             <div className="rounded-2xl border border-gray-200 bg-white p-4 shadow-sm sm:p-6">
+              <div className="mb-4 flex flex-wrap items-center justify-between gap-2 border-b border-slate-100 pb-4">
+                <div><p className="text-sm font-semibold text-slate-900">{paquete?.titulo}</p><p className="mt-0.5 text-xs capitalize text-slate-500">{formatDepartureDate(date)}</p></div>
+                <Badge variant="outline">{seats.length} butacas</Badge>
+              </div>
               <SeatMap
                 template={data.template}
                 seats={seats}
@@ -398,14 +450,14 @@ export default function SeatsDashboard({ paquetes, initialPackageId, initialDate
                 onSeatClick={handleSeatClick}
               />
             </div>
-          ) : (
+          ) : date && data ? (
             <div className="rounded-2xl border border-dashed border-gray-200 bg-gray-50/50 p-12 text-center text-sm text-gray-500">
-              {loading ? 'Cargando mapa…' : 'Seleccioná paquete y fecha para ver el mapa de butacas.'}
+              Esta salida no tiene un mapa de butacas habilitado.
             </div>
-          )}
+          ) : null}
         </div>
 
-        <div className="flex flex-col gap-4">
+        {data?.enabled && Array.isArray(data?.seats) && <div className="flex flex-col gap-4">
           <div className="rounded-2xl border border-gray-200 bg-white p-5 shadow-sm">
             <div className="text-xs font-medium uppercase tracking-wider text-gray-500">Leyenda</div>
             <div className="mt-3 space-y-2.5">
@@ -423,7 +475,7 @@ export default function SeatsDashboard({ paquetes, initialPackageId, initialDate
               })}
             </div>
           </div>
-        </div>
+        </div>}
       </div>
 
       <Dialog

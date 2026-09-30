@@ -202,7 +202,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
                 <Menu className="h-5 w-5" />
               </button>
               <nav className="flex items-center gap-1.5 text-sm text-gray-500">
-                <Link href="/admin" className="hover:text-gray-700 transition-colors">
+                <Link href="/admin" className="text-sm hover:text-gray-700 transition-colors">
                   Admin
                 </Link>
                 {(() => {
@@ -219,7 +219,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
                         {isLast ? (
                           <span className="text-gray-800 font-medium">{label}</span>
                         ) : (
-                          <Link href={hrefAcc} className="hover:text-gray-700 transition-colors">
+                          <Link href={hrefAcc} className="text-sm hover:text-gray-700 transition-colors">
                             {label}
                           </Link>
                         )}

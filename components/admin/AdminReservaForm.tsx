@@ -1322,9 +1322,6 @@ export default function AdminReservaForm({
                         if (e.target.value.trim()) handleFormChange('selectedReferralCode', '');
                       }}
                     />
-                    <p className="text-xs text-gray-500">
-                      Si completás este campo, se usará el código exacto.
-                    </p>
                   </div>
                 </div>
               </FormSection>
@@ -1397,13 +1394,9 @@ export default function AdminReservaForm({
                     Guardando reserva
                   </>
                 ) : (
-                  'Confirmar reserva manual'
+                  'Reservar'
                 )}
               </Button>
-              <p className="text-xs text-gray-500 flex items-center gap-1">
-                <Info className="h-3 w-3" />
-                Se registrará el precio y el snapshot de cupo/config. Si la fecha tiene cupos, se valida disponibilidad antes de confirmar.
-              </p>
             </div>
           </form>
         </div>
@@ -1448,7 +1441,6 @@ export default function AdminReservaForm({
                     {!isVendorMode && <div className="mt-4 space-y-2 border-t border-gray-100 pt-3">
                       <Label htmlFor="manual-sale-coupon" className="flex items-center gap-1.5 text-xs font-semibold normal-case tracking-normal text-gray-700"><TicketPercent className="h-3.5 w-3.5 text-[#18878B]" />Cupón de comunidad</Label>
                       <Input id="manual-sale-coupon" value={couponCode} onChange={(event) => setCouponCode(event.target.value.toUpperCase())} placeholder="Ingresá el código" autoComplete="off" className="h-10 uppercase" />
-                      <p className="text-[11px] leading-4 text-gray-500">Se valida para el miembro asociado al email del cliente y se aplica solo al precio del paquete.</p>
                       {couponQuoteLoading && <div className="flex items-center gap-2 text-xs text-gray-500"><Loader2 className="h-3.5 w-3.5 animate-spin" />Validando cupón…</div>}
                       {!couponQuoteLoading && couponQuote && <div className="rounded-lg bg-emerald-50 px-3 py-2 text-xs font-semibold text-emerald-800">{couponQuote.discount.nombre} · Cupón {couponQuote.couponCode} validado.</div>}
                       {!couponQuoteLoading && couponQuoteError && <p role="alert" className="text-xs text-rose-700">{couponQuoteError}</p>}

@@ -446,7 +446,7 @@ export default function PackageForm(props: Props) {
   };
 
   return (
-    <div className="mx-auto max-w-[1180px] space-y-5 pb-12">
+    <div className="mx-auto space-y-5 pb-12">
       <div className="flex flex-col gap-4 rounded-[20px] border border-[#E9EEF4] bg-white px-5 py-4 lg:flex-row lg:items-center lg:justify-between">
         <div>
           <h1 className="text-[20px] font-bold tracking-[-0.02em] text-[#0F172A]">{title}</h1>

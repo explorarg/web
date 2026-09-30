@@ -8,7 +8,7 @@ export default async function ButacasAdminPage({
 }: {
   searchParams?: Promise<Record<string, string | string[] | undefined>>;
 }) {
-  const paquetes = await getAllPaquetesAdmin();
+  const paquetes = (await getAllPaquetesAdmin()).filter((paquete) => paquete.visible !== false);
   const sp = (await searchParams) ?? {};
   const initialPackageId = typeof sp.packageId === 'string' ? sp.packageId : '';
   const initialDate = typeof sp.date === 'string' ? sp.date : '';

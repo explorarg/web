@@ -147,7 +147,7 @@ export default function VendedoresPage() {
         toast.error('Datos inválidos');
         setSaving(false);
         return;
-        }
+      }
       if (editing) {
         await updateDoc(doc(db, 'vendors', editing.id), payload as any);
         setVendors(prev => prev.map(v => (v.id === editing.id ? { ...v, ...(payload as any) } : v)));
@@ -281,11 +281,7 @@ export default function VendedoresPage() {
               </Button>
             </div>
           </div>
-          <Card>
-            <CardHeader className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-              <div className="flex flex-1 flex-col gap-2">
-                <div className="flex items-center gap-2">
-                  <div className="relative w-full max-w-xl">
+          <div className="relative w-full max-w-xl">
                     <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-500" />
                     <Input
                       placeholder="Buscar por nombre o email"
@@ -310,159 +306,142 @@ export default function VendedoresPage() {
                       </Button>
                     )}
                   </div>
-                </div>
-              </div>
-              <div className="flex items-center gap-3">
-                <Select value={String(itemsPerPage)} onValueChange={(v) => setItemsPerPage(Number(v))}>
-                  <SelectTrigger className="w-[140px]">
-                    <SelectValue placeholder="Items/página" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="10">10 por página</SelectItem>
-                    <SelectItem value="20">20 por página</SelectItem>
-                    <SelectItem value="50">50 por página</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-            </CardHeader>
-            <CardContent>
-              {loading ? (
-                <div className="flex items-center justify-center py-12">
-                  <Loader2 className="h-6 w-6 animate-spin text-gray-400" />
-                </div>
-              ) : (
-                <div className="space-y-4">
-                  <section className="rounded-2xl bg-white shadow-sm ring-1 ring-black/5">
-                    <Table className="text-sm">
-                      <TableHeader className="[&_tr]:border-black/5">
-                        <TableRow className="border-black/5 hover:bg-transparent">
-                          <TableHead className="px-4">Nombre</TableHead>
-                          <TableHead>Email</TableHead>
-                          <TableHead>Estado</TableHead>
-                          <TableHead>Comisión</TableHead>
-                          <TableHead className="text-right pr-4">Acciones</TableHead>
-                        </TableRow>
-                      </TableHeader>
-                      <TableBody>
-                        {pageItems.map((v) => (
-                          <TableRow key={v.id} className="border-black/5 hover:bg-black/[0.02]">
-                            <TableCell className="px-4">
-                              <div className="font-medium text-gray-900">{v.name}</div>
-                              <div className="mt-0.5 text-[11px] text-gray-500 break-all">
-                                {v.email}
-                              </div>
-                            </TableCell>
-                            <TableCell>
-                              <div className="text-sm text-gray-900 break-all">
-                                {v.email}
-                              </div>
-                            </TableCell>
-                            <TableCell>
-                              {v.active ? (
-                                <Badge variant="outline" className="gap-1 text-green-700 text-[11px]">
-                                  <CheckCircle2 className="h-3 w-3" /> Activo
-                                </Badge>
-                              ) : (
-                                <Badge variant="outline" className="gap-1 text-gray-600 text-[11px]">
-                                  <XCircle className="h-3 w-3" /> Inactivo
-                                </Badge>
-                              )}
-                            </TableCell>
-                            <TableCell>
-                              <div className="text-sm text-gray-900">
-                                {v.defaultCommission.type === 'percent'
-                                  ? `${v.defaultCommission.value}%`
-                                  : `${v.defaultCommission.value} ${v.defaultCommission.currency.toUpperCase()}`}
-                              </div>
-                              <div className="text-[11px] text-gray-400">
-                                {v.defaultCommission.type === 'percent'
-                                  ? 'Porcentaje sobre la venta'
-                                  : 'Monto fijo por reserva'}
-                              </div>
-                            </TableCell>
-                            <TableCell className="pr-4">
-                              <div className="flex items-center justify-end gap-1">
+
+          {loading ? (
+            <div className="flex items-center justify-center py-12">
+              <Loader2 className="h-6 w-6 animate-spin text-gray-400" />
+            </div>
+          ) : (
+            <div className="space-y-4">
+              <section className="rounded-2xl bg-white shadow-sm ring-1 ring-black/5">
+                <Table className="text-sm">
+                  <TableHeader className="[&_tr]:border-black/5">
+                    <TableRow className="border-black/5 hover:bg-transparent">
+                      <TableHead className="px-4">Nombre</TableHead>
+                      <TableHead>Email</TableHead>
+                      <TableHead>Estado</TableHead>
+                      <TableHead>Comisión</TableHead>
+                      <TableHead className="text-right pr-4">Acciones</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {pageItems.map((v) => (
+                      <TableRow key={v.id} className="border-black/5 hover:bg-black/[0.02]">
+                        <TableCell className="px-4">
+                          <div className="font-medium text-gray-900">{v.name}</div>
+                          <div className="mt-0.5 text-[11px] text-gray-500 break-all">
+                            {v.email}
+                          </div>
+                        </TableCell>
+                        <TableCell>
+                          <div className="text-sm text-gray-900 break-all">
+                            {v.email}
+                          </div>
+                        </TableCell>
+                        <TableCell>
+                          {v.active ? (
+                            <Badge variant="outline" className="gap-1 text-green-700 text-[11px]">
+                              <CheckCircle2 className="h-3 w-3" /> Activo
+                            </Badge>
+                          ) : (
+                            <Badge variant="outline" className="gap-1 text-gray-600 text-[11px]">
+                              <XCircle className="h-3 w-3" /> Inactivo
+                            </Badge>
+                          )}
+                        </TableCell>
+                        <TableCell>
+                          <div className="text-sm text-gray-900">
+                            {v.defaultCommission.type === 'percent'
+                              ? `${v.defaultCommission.value}%`
+                              : `${v.defaultCommission.value} ${v.defaultCommission.currency.toUpperCase()}`}
+                          </div>
+                          <div className="text-[11px] text-gray-400">
+                            {v.defaultCommission.type === 'percent'
+                              ? 'Porcentaje sobre la venta'
+                              : 'Monto fijo por reserva'}
+                          </div>
+                        </TableCell>
+                        <TableCell className="pr-4">
+                          <div className="flex items-center justify-end gap-1">
+                            <Button
+                              variant="ghost"
+                              size="icon-sm"
+                              className="rounded-full"
+                              title="Editar vendedor"
+                              onClick={() => openEdit(v)}
+                            >
+                              <Edit className="h-4 w-4" />
+                            </Button>
+                            <DropdownMenu>
+                              <DropdownMenuTrigger asChild>
                                 <Button
                                   variant="ghost"
                                   size="icon-sm"
                                   className="rounded-full"
-                                  title="Editar vendedor"
-                                  onClick={() => openEdit(v)}
+                                  title="Más acciones"
                                 >
-                                  <Edit className="h-4 w-4" />
+                                  <MoreHorizontal className="h-4 w-4" />
                                 </Button>
-                                <DropdownMenu>
-                                  <DropdownMenuTrigger asChild>
-                                    <Button
-                                      variant="ghost"
-                                      size="icon-sm"
-                                      className="rounded-full"
-                                      title="Más acciones"
-                                    >
-                                      <MoreHorizontal className="h-4 w-4" />
-                                    </Button>
-                                  </DropdownMenuTrigger>
-                                  <DropdownMenuContent
-                                    align="end"
-                                    className="min-w-[260px] bg-white/90 shadow-lg ring-1 ring-black/10 border border-white/70 backdrop-blur"
-                                  >
-                                    <DropdownMenuLabel>Acciones</DropdownMenuLabel>
-                                    <DropdownMenuSeparator />
-                                    {!v.authUid ? (
-                                      <DropdownMenuItem onClick={() => createAuthAndSend(v)}>
-                                        <Mail className="h-4 w-4" />
-                                        Crear usuario y enviar acceso
-                                      </DropdownMenuItem>
-                                    ) : (
-                                      <>
-                                        <DropdownMenuItem onClick={() => resetPassword(v)}>
-                                          <KeyRound className="h-4 w-4" />
-                                          Blanquear contraseña
-                                        </DropdownMenuItem>
-                                        <DropdownMenuItem onClick={() => toggleActive(v)}>
-                                          {v.active ? (
-                                            <>
-                                              <UserX className="h-4 w-4" />
-                                              Deshabilitar
-                                            </>
-                                          ) : (
-                                            <>
-                                              <UserCheck className="h-4 w-4" />
-                                              Habilitar
-                                            </>
-                                          )}
-                                        </DropdownMenuItem>
-                                      </>
-                                    )}
-                                    <DropdownMenuSeparator />
-                                    <DropdownMenuItem
-                                      onClick={() => setDeleteId(v.id)}
-                                      className="text-red-600 focus:text-red-600"
-                                    >
-                                      <Trash2 className="h-4 w-4" />
-                                      Eliminar
+                              </DropdownMenuTrigger>
+                              <DropdownMenuContent
+                                align="end"
+                                className="min-w-[260px] bg-white/90 shadow-lg ring-1 ring-black/10 border border-white/70 backdrop-blur"
+                              >
+                                <DropdownMenuLabel>Acciones</DropdownMenuLabel>
+                                <DropdownMenuSeparator />
+                                {!v.authUid ? (
+                                  <DropdownMenuItem onClick={() => createAuthAndSend(v)}>
+                                    <Mail className="h-4 w-4" />
+                                    Crear usuario y enviar acceso
+                                  </DropdownMenuItem>
+                                ) : (
+                                  <>
+                                    <DropdownMenuItem onClick={() => resetPassword(v)}>
+                                      <KeyRound className="h-4 w-4" />
+                                      Blanquear contraseña
                                     </DropdownMenuItem>
-                                  </DropdownMenuContent>
-                                </DropdownMenu>
-                              </div>
-                            </TableCell>
-                          </TableRow>
-                        ))}
-                      </TableBody>
-                    </Table>
-                  </section>
-                  <AdminPagination
-                    currentPage={currentPage}
-                    totalItems={filtered.length}
-                    itemsPerPage={itemsPerPage}
-                    onPageChange={setCurrentPage}
-                    onItemsPerPageChange={setItemsPerPage}
-                    itemName="vendedores"
-                  />
-                </div>
-              )}
-            </CardContent>
-          </Card>
+                                    <DropdownMenuItem onClick={() => toggleActive(v)}>
+                                      {v.active ? (
+                                        <>
+                                          <UserX className="h-4 w-4" />
+                                          Deshabilitar
+                                        </>
+                                      ) : (
+                                        <>
+                                          <UserCheck className="h-4 w-4" />
+                                          Habilitar
+                                        </>
+                                      )}
+                                    </DropdownMenuItem>
+                                  </>
+                                )}
+                                <DropdownMenuSeparator />
+                                <DropdownMenuItem
+                                  onClick={() => setDeleteId(v.id)}
+                                  className="text-red-600 focus:text-red-600"
+                                >
+                                  <Trash2 className="h-4 w-4" />
+                                  Eliminar
+                                </DropdownMenuItem>
+                              </DropdownMenuContent>
+                            </DropdownMenu>
+                          </div>
+                        </TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+              </section>
+              <AdminPagination
+                currentPage={currentPage}
+                totalItems={filtered.length}
+                itemsPerPage={itemsPerPage}
+                onPageChange={setCurrentPage}
+                onItemsPerPageChange={setItemsPerPage}
+                itemName="vendedores"
+              />
+            </div>
+          )}
 
           <Dialog open={formOpen} onOpenChange={(open) => { setFormOpen(open); if (!open) setEditing(null); }}>
             <DialogContent className="sm:max-w-[620px] bg-white dark:bg-white rounded-xl border border-gray-200 dark:border-gray-200 shadow-2xl text-gray-900 dark:text-gray-900">
@@ -491,7 +470,7 @@ export default function VendedoresPage() {
                 <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
                   <div className="space-y-2">
                     <Label>Tipo de comisión</Label>
-                    <Select value={form.type} onValueChange={(v) => setForm({ ...form, type: v as 'percent'|'fixed' })}>
+                    <Select value={form.type} onValueChange={(v) => setForm({ ...form, type: v as 'percent' | 'fixed' })}>
                       <SelectTrigger>
                         <SelectValue placeholder="Tipo" />
                       </SelectTrigger>
