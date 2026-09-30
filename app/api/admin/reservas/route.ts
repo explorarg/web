@@ -332,10 +332,12 @@ function formatEmailDate(date: string): string {
 function formatEmailAmount(amountTotal: number, currency: string): string {
   const value = (amountTotal ?? 0) / 100;
   const normalized = String(currency || 'ARS').toUpperCase();
-  if (normalized === 'ARS') return `$${value.toLocaleString('es-AR')}`;
-  if (normalized === 'BRL') return `R$ ${value.toLocaleString('pt-BR')}`;
-  if (normalized === 'USD') return `USD ${value.toLocaleString('en-US')}`;
-  return `${value.toFixed(2)} ${normalized}`;
+  const locale = normalized === 'BRL' ? 'pt-BR' : normalized === 'USD' ? 'en-US' : 'es-AR';
+  try {
+    return new Intl.NumberFormat(locale, { style: 'currency', currency: normalized, minimumFractionDigits: 2, maximumFractionDigits: 2 }).format(value);
+  } catch {
+    return `${normalized} ${value.toFixed(2)}`;
+  }
 }
 
 function normalizePaymentMovementStatus(movementType: z.infer<typeof paymentMovementSchema>['movementType']): string {

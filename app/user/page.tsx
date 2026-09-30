@@ -78,8 +78,7 @@ const tierLabels: Record<string, string> = { bronce: 'Bronce', plata: 'Plata', o
 
 function amount(value: number, currency = 'ARS') {
   try {
-    const digits = currency.toUpperCase() === 'ARS' ? 0 : 2;
-    return new Intl.NumberFormat('es-AR', { style: 'currency', currency: currency.toUpperCase(), minimumFractionDigits: digits, maximumFractionDigits: digits }).format(value / 100);
+    return new Intl.NumberFormat('es-AR', { style: 'currency', currency: currency.toUpperCase(), minimumFractionDigits: 2, maximumFractionDigits: 2 }).format(value / 100);
   } catch {
     return `${currency.toUpperCase()} ${(value / 100).toLocaleString('es-AR')}`;
   }

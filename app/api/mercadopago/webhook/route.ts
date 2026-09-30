@@ -123,9 +123,13 @@ function toMillis(value: unknown): number {
 
 function formatAmount(amountTotal: number, currency: string): string {
   const value = amountTotal / 100;
-  if (currency === 'brl') return `R$ ${value.toLocaleString('pt-BR', { maximumFractionDigits: 0 })}`;
-  if (currency === 'usd') return `USD ${value.toLocaleString('en-US', { maximumFractionDigits: 0 })}`;
-  return `$ ${value.toLocaleString('es-AR', { maximumFractionDigits: 0 })}`;
+  const normalized = String(currency || 'ARS').toUpperCase();
+  const locale = normalized === 'BRL' ? 'pt-BR' : normalized === 'USD' ? 'en-US' : 'es-AR';
+  try {
+    return new Intl.NumberFormat(locale, { style: 'currency', currency: normalized, minimumFractionDigits: 2, maximumFractionDigits: 2 }).format(value);
+  } catch {
+    return `${normalized} ${value.toFixed(2)}`;
+  }
 }
 
 function formatDate(date: string): string {

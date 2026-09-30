@@ -62,6 +62,7 @@ function formatCurrency(amount: number, currency: string | undefined): string {
   return new Intl.NumberFormat(locale, {
     style: 'currency',
     currency: normalized,
+    minimumFractionDigits: 2,
     maximumFractionDigits: 2,
   }).format(amount / 100);
 }

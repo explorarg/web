@@ -81,8 +81,8 @@ function formatAmountCents(amountCents: number, currency: string): string {
   const locale = normalized === 'BRL' ? 'pt-BR' : normalized === 'USD' ? 'en-US' : 'es-AR';
   const symbol = normalized === 'USD' ? 'US$' : normalized === 'BRL' ? 'R$' : '$';
   const value = new Intl.NumberFormat(locale, {
-    minimumFractionDigits: 0,
-    maximumFractionDigits: 0,
+    minimumFractionDigits: 2,
+    maximumFractionDigits: 2,
   }).format((amountCents || 0) / 100);
   return `${symbol} ${value} ${normalized}`;
 }

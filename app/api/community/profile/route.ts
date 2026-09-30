@@ -35,18 +35,17 @@ export async function GET(request: Request) {
   };
   const purchases = purchaseSnapshot.docs.map((item) => {
     const data = item.data();
+    const amountCents = Math.max(0, Number(data.amountCents ?? 0));
+    const discountCents = Math.max(0, Number(data.discountCents ?? 0));
     return {
       id: item.id,
       orderId: String(data.orderId ?? ''),
       paymentId: String(data.paymentId ?? ''),
-      amountCents: Math.max(0, Number(data.amountCents ?? 0)),
-      discountCents: Math.max(0, Number(data.discountCents ?? 0)),
+      amountCents,
+      discountCents,
       discountName: data.discountName ? String(data.discountName) : null,
       promotionCode: data.promotionCode ? String(data.promotionCode) : null,
-      originalAmountCents: Math.max(
-        Math.max(0, Number(data.amountCents ?? 0)) + Math.max(0, Number(data.discountCents ?? 0)),
-        Number(data.originalAmountCents ?? data.amountCents ?? 0)
-      ),
+      originalAmountCents: discountCents > 0 ? amountCents + discountCents : amountCents,
       currency: String(data.currency ?? 'ARS'),
       reservationCount: Math.max(1, Number(data.reservationCount ?? 1)),
       packages: Array.isArray(data.packages) ? data.packages : [],

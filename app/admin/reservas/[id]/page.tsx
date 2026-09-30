@@ -169,9 +169,13 @@ const toTimestampMs = (value: unknown): number => {
 
 const formatAmount = (amountTotal: number, currency: string): string => {
   const value = amountTotal / 100;
-  if (currency.toUpperCase() === 'ARS') return `$${value.toLocaleString('es-AR')}`;
-  if (currency.toUpperCase() === 'BRL') return `R$ ${value.toLocaleString('pt-BR')}`;
-  return `${value.toFixed(2)} ${currency.toUpperCase()}`;
+  const normalized = currency.toUpperCase();
+  const locale = normalized === 'BRL' ? 'pt-BR' : normalized === 'USD' ? 'en-US' : 'es-AR';
+  try {
+    return new Intl.NumberFormat(locale, { style: 'currency', currency: normalized, minimumFractionDigits: 2, maximumFractionDigits: 2 }).format(value);
+  } catch {
+    return `${normalized} ${value.toFixed(2)}`;
+  }
 };
 
 const statusBadgeVariant: Record<ReservationStatus, 'default' | 'outline' | 'destructive' | 'secondary'> = {
