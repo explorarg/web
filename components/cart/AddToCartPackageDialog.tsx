@@ -443,10 +443,10 @@ export default function AddToCartPackageDialog({
         }}
       >
         <DialogContent
-          className="!flex !h-[calc(100dvh-1rem)] !max-h-[calc(100dvh-1rem)] !flex-col !w-[calc(100vw-1rem)] sm:!h-auto sm:!max-h-[calc(100dvh-2rem)] sm:!w-[calc(100vw-2rem)] !max-w-none sm:!max-w-[72rem] bg-[#FCFEFF] p-0 overflow-hidden rounded-[22px] sm:rounded-[30px] border border-[#DCEBF7] shadow-[0_24px_80px_rgba(8,46,86,0.18)]"
+          className="!flex !h-[calc(100dvh-0.75rem)] !max-h-[calc(100dvh-0.75rem)] !flex-col !gap-0 !w-[calc(100vw-0.75rem)] sm:!h-[min(90dvh,54rem)] sm:!max-h-[calc(100dvh-2rem)] sm:!w-[calc(100vw-2rem)] !max-w-none sm:!max-w-[72rem] bg-[#FCFEFF] p-0 overflow-hidden rounded-[20px] sm:rounded-[26px] border border-[#DCEBF7] shadow-[0_24px_80px_rgba(8,46,86,0.18)]"
           showCloseButton={false}
         >
-          <div className="shrink-0 border-b border-[#E4EEF7] bg-white px-4 py-3 pt-[max(0.75rem,env(safe-area-inset-top))] sm:px-7 sm:py-5">
+          <div className="shrink-0 border-b border-[#E4EEF7] bg-white px-3.5 py-2.5 pt-[max(0.65rem,env(safe-area-inset-top))] sm:px-6 sm:py-3.5">
             <div className="flex items-start gap-3 sm:gap-4">
               <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-2xl bg-[#ECFAFF] sm:h-10 sm:w-10">
                 <Calendar className="h-4 w-4 text-[#2BB8BF] sm:h-5 sm:w-5" />
@@ -457,7 +457,7 @@ export default function AddToCartPackageDialog({
 
                 </DialogTitle>
                 <div className="mt-2 flex flex-wrap items-center gap-1.5">
-                  <span className="inline-flex items-center gap-1.5 rounded-full bg-[#ECFAFF] px-2.5 py-1 text-[10px] font-bold text-[#0A7FA0] sm:text-[11px]">
+                  <span className="inline-flex items-center gap-1.5 rounded-full bg-[#ECFAFF] px-2.5 py-1 text-[9px] font-bold text-[#0A7FA0] sm:text-[10px]">
                     <span className="flex h-4 w-4 items-center justify-center rounded-full bg-[#2BB8BF] text-[9px] text-white">1</span>
                     Fecha y pasajeros
                   </span>
@@ -486,87 +486,83 @@ export default function AddToCartPackageDialog({
             </div>
           </div>
 
-          <div className="min-h-0 flex-1 overflow-y-auto overflow-x-hidden overscroll-contain px-4 pt-4 pb-5 sm:px-7 sm:pt-6 sm:pb-6 bg-[linear-gradient(180deg,#FAFDFF_0%,#F3FAFF_100%)]">
-            <div className="grid items-start gap-4 md:gap-6 lg:grid-cols-2">
+          <div className="min-h-0 flex-1 overflow-y-auto overflow-x-hidden overscroll-contain px-3 py-3 sm:px-5 sm:py-4 xl:px-6 bg-[linear-gradient(180deg,#FAFDFF_0%,#F3FAFF_100%)]">
+            <div className="grid min-w-0 items-start gap-3 sm:gap-4 lg:grid-cols-[minmax(0,0.92fr)_minmax(0,1.08fr)] xl:gap-5">
               {/* Left Column */}
-              <div className="space-y-4">
-                <div className="rounded-2xl md:rounded-3xl border border-[#DCEBF7] bg-white/95 shadow-[0_12px_34px_rgba(18,89,150,0.09)] p-4 md:p-5">
-                  <div className="text-[16px] leading-[1.1] font-black tracking-[-0.01em] text-slate-800">1. Elegí tu fecha de salida</div>
-                  <div className="mt-4 space-y-3">
-                    {/* Las flechas solo tienen sentido si hay más fechas que las visibles */}
+              <div className="min-w-0 space-y-3 sm:space-y-4">
+                <div className="rounded-2xl border border-[#DCEBF7] bg-white/95 p-3.5 shadow-[0_12px_34px_rgba(18,89,150,0.07)] sm:rounded-3xl sm:p-4 xl:p-5">
+                  <div className="flex items-center justify-between gap-3">
+                    <div className="text-[14px] font-black leading-tight tracking-[-0.01em] text-slate-800 sm:text-[15px]">1. Elegí tu fecha de salida</div>
                     {availableDates.length > visibleDateCount ? (
-                      <div className="flex items-center justify-end gap-2">
+                      <div className="flex shrink-0 items-center gap-1.5">
                         <button
                           type="button"
                           onClick={() => setDateOffset((v) => Math.max(0, v - visibleDateCount))}
                           disabled={dateOffset <= 0}
-                          className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full border border-[#D7E7F6] bg-white transition-colors hover:bg-[#F3FAFF] disabled:cursor-not-allowed disabled:opacity-40"
+                          className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full border border-[#D7E7F6] bg-white transition-colors hover:bg-[#F3FAFF] disabled:cursor-not-allowed disabled:opacity-40"
                           aria-label="Fechas anteriores"
-                        >
-                          <ArrowLeft className="h-4 w-4 text-[#264B79]" />
-                        </button>
+                        ><ArrowLeft className="h-3.5 w-3.5 text-[#264B79]" /></button>
                         <button
                           type="button"
                           onClick={() => setDateOffset((v) => Math.min(Math.max(0, availableDates.length - visibleDateCount), v + visibleDateCount))}
                           disabled={availableDates.length <= dateOffset + visibleDateCount}
-                          className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full border border-[#D7E7F6] bg-white transition-colors hover:bg-[#F3FAFF] disabled:cursor-not-allowed disabled:opacity-40"
+                          className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full border border-[#D7E7F6] bg-white transition-colors hover:bg-[#F3FAFF] disabled:cursor-not-allowed disabled:opacity-40"
                           aria-label="Más fechas"
-                        >
-                          <ChevronRight className="h-4 w-4 text-[#264B79]" />
-                        </button>
+                        ><ChevronRight className="h-3.5 w-3.5 text-[#264B79]" /></button>
                       </div>
                     ) : null}
-                    <div className={cn("grid gap-2", isMobile ? "grid-cols-2" : "grid-cols-4")}>
-                      {availableDates.slice(dateOffset, dateOffset + visibleDateCount).map((d) => {
-                        const active = d === date;
-                        const dt = new Date(`${d}T00:00:00`);
-                        const ok = !Number.isNaN(dt.getTime());
-                        const day = ok ? dt.getDate() : d;
-                        const month = ok ? dt.toLocaleDateString('es-AR', { month: 'short' }) : '';
-                        const weekday = ok ? dt.toLocaleDateString('es-AR', { weekday: 'short' }) : '';
-                        return (
-                          <button
-                            key={d}
-                            type="button"
-                            onClick={() => {
-                              setDate(d);
-                              setSelectedSeatIds([]);
-                              prefetchSeatState(d);
-                            }}
-                            onMouseEnter={() => prefetchSeatState(d)}
-                            className={cn(
-                              "min-w-0 w-full max-w-[96px] justify-self-center rounded-2xl border px-1.5 py-1.5 text-center transition-all",
-                              active
-                                ? "border-[#0BAFCB] bg-gradient-to-b from-[#08B5D7] to-[#0399BD] text-white shadow-[0_10px_24px_rgba(0,154,188,0.35)]"
-                                : "border-[#D7E7F6] bg-white text-[#0A2A53] hover:border-[#A6C6E6]"
-                            )}
-                          >
-                            <div className="text-base font-extrabold leading-none sm:text-lg">{day}</div>
-                            <div className={cn("mt-0.5 text-[10px] font-semibold sm:text-xs", active ? "text-white/90" : "text-[#4E6787]")}>
-                              {month}
-                            </div>
-                            <div className={cn("text-[10px] sm:text-xs", active ? "text-white/80" : "text-[#6882A3]")}>{weekday}</div>
-                          </button>
-                        );
-                      })}
-                    </div>
+                  </div>
+                  <div className="mt-3 grid grid-cols-2 gap-2 sm:grid-cols-4">
+                    {availableDates.slice(dateOffset, dateOffset + visibleDateCount).map((d) => {
+                      const active = d === date;
+                      const dt = new Date(`${d}T00:00:00`);
+                      const ok = !Number.isNaN(dt.getTime());
+                      const day = ok ? dt.getDate() : d;
+                      const month = ok ? dt.toLocaleDateString('es-AR', { month: 'short' }) : '';
+                      const weekday = ok ? dt.toLocaleDateString('es-AR', { weekday: 'short' }) : '';
+                      return (
+                        <button
+                          key={d}
+                          type="button"
+                          onClick={() => {
+                            setDate(d);
+                            setSelectedSeatIds([]);
+                            prefetchSeatState(d);
+                          }}
+                          onMouseEnter={() => prefetchSeatState(d)}
+                          aria-pressed={active}
+                          className={cn(
+                            'flex min-h-[54px] min-w-0 w-full items-center gap-2 rounded-xl border px-2 py-1.5 text-left transition-colors sm:min-h-[58px] sm:gap-2.5 sm:px-2.5',
+                            active
+                              ? 'border-[#0BAFCB] bg-[#EAFBFE] text-[#087C98] shadow-[0_3px_10px_rgba(0,154,188,0.10)] ring-1 ring-[#0BAFCB]/15'
+                              : 'border-[#E1EAF3] bg-white text-[#0A2A53] hover:border-[#A6C6E6] hover:bg-[#F8FCFF]'
+                          )}
+                        >
+                          <span className={cn('flex h-9 w-9 shrink-0 flex-col items-center justify-center rounded-lg text-[15px] font-extrabold leading-none sm:h-10 sm:w-10 sm:text-base', active ? 'bg-[#12AFCB] text-white' : 'bg-[#F1F6FA] text-[#173B62]')}>
+                            {String(day).padStart(2, '0')}
+                          </span>
+                          <span className="min-w-0 flex-1">
+                            <span className="block truncate text-[11px] font-bold capitalize leading-tight sm:text-xs">{weekday}</span>
+                            <span className={cn('mt-0.5 block truncate text-[10px] font-medium capitalize leading-tight sm:text-[11px]', active ? 'text-[#16859D]' : 'text-[#7890A9]')}>{month}</span>
+                          </span>
+                          {active ? <Check className="mr-0.5 h-3.5 w-3.5 shrink-0 text-[#0B9BB8]" aria-hidden /> : null}
+                        </button>
+                      );
+                    })}
                   </div>
 
-                  <div className="mt-5 border-t border-[#E9F1F9] pt-5">
-                    <div className="flex items-start gap-3">
-                      <div className="h-9 w-9 rounded-2xl bg-[#ECFAFF] flex items-center justify-center">
-                        <Calendar className="h-4 w-4 text-[#2BB8BF]" />
-                      </div>
-                      <div className="min-w-0">
-                        <div className="text-[11px] text-[#5E7898]">Salida seleccionada</div>
-                        <div className="text-[13px] leading-[1.2] font-black tracking-[-0.01em] text-[#072852]">
-                          {date === 'sin-fecha' ? 'A coordinar' : formatDateLong(date)}
-                        </div>
-                      </div>
-                    </div>
+                  <div className="mt-3 flex items-center gap-2.5 rounded-xl bg-[#F5FAFD] px-3 py-2.5 sm:mt-4">
+                    <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-white text-[#2BB8BF] shadow-sm ring-1 ring-[#E6F0F6]"><Calendar className="h-4 w-4" /></span>
+                    <span className="min-w-0">
+                      <span className="block text-[10px] font-medium text-[#7188A1]">Salida seleccionada</span>
+                      <span className="block truncate text-[12px] font-extrabold capitalize leading-tight text-[#072852] sm:text-[13px]">{date === 'sin-fecha' ? 'A coordinar' : formatDateLong(date)}</span>
+                    </span>
+                  </div>
+
+                  <div className="mt-3 border-t border-[#E9F1F9] pt-3 sm:mt-4 sm:pt-4">
 
                     {pickupPoints.length > 0 ? (
-                      <div className="mt-4 grid gap-3 sm:grid-cols-2">
+                      <div className="mt-3 grid gap-2.5 md:grid-cols-2">
                         <div className="min-w-0 space-y-1">
                           <Label className="text-xs font-semibold text-[#607B9C]">Salida seleccionada</Label>
                           <Select value={pickupPoint} onValueChange={setPickupPoint} disabled={loading}>
@@ -674,16 +670,9 @@ export default function AddToCartPackageDialog({
                       </div>
                     ) : null}
                   </div>
-
-                  {availableDates.length > 0 ? (
-                    <div className="mt-4 inline-flex items-center gap-2 rounded-full bg-[#F4FFF9] px-3 py-1.5 text-[11px] font-semibold text-[#117A4B]">
-                      <span className="h-1.5 w-1.5 rounded-full bg-[#1D935B]" />
-                      Salida grupal confirmada · disponibilidad activa
-                    </div>
-                  ) : null}
                 </div>
 
-                <div className="rounded-2xl md:rounded-3xl border border-[#DCEBF7] bg-white p-3 sm:p-4 shadow-[0_12px_34px_rgba(18,89,150,0.09)]">
+                <div className="min-w-0 rounded-2xl border border-[#DCEBF7] bg-white p-3 shadow-[0_12px_34px_rgba(18,89,150,0.07)] sm:rounded-3xl sm:p-4">
                   <div className="text-[14px] sm:text-[15px] leading-[1.1] font-black tracking-[-0.01em] text-slate-800">Resumen de tu reserva</div>
                   <div className="mt-3 sm:mt-4">
                     <div>
@@ -824,7 +813,7 @@ export default function AddToCartPackageDialog({
               </div>
 
               <div className="space-y-4 lg:sticky lg:top-0">
-                <div className="rounded-2xl md:rounded-3xl border border-[#DCEBF7] bg-white p-3 sm:p-4 shadow-[0_12px_34px_rgba(18,89,150,0.09)]">
+                <div className="min-w-0 rounded-2xl border border-[#DCEBF7] bg-white p-3 shadow-[0_12px_34px_rgba(18,89,150,0.07)] sm:rounded-3xl sm:p-4">
                   <div className="flex items-center justify-between">
                     <div>
                       <div className="text-[14px] sm:text-[16px] leading-[1.1] font-black tracking-[-0.01em] text-slate-800">2. Elegí tus butacas</div>
@@ -918,12 +907,12 @@ export default function AddToCartPackageDialog({
             </div>
           </div>
 
-          <div className="shrink-0 border-t border-[#E4EEF7] bg-white px-4 pt-3 pb-[calc(env(safe-area-inset-bottom)+0.75rem)] sm:px-7 sm:py-4">
-            <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between sm:gap-6">
-              <div className="flex items-center gap-3">
+          <div className="shrink-0 border-t border-[#E4EEF7] bg-white px-3.5 pt-2.5 pb-[calc(env(safe-area-inset-bottom)+0.65rem)] sm:px-6 sm:py-3.5">
+            <div className="flex flex-row items-center justify-between gap-2 sm:gap-5">
+              <div className="flex min-w-0 items-center gap-2 sm:gap-3">
                 <button
                   type="button"
-                  className="inline-flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl border border-[#D7E7F6] bg-white text-[#2BB8BF] transition-colors hover:bg-[#F3FAFF] hover:text-[#0D7098]"
+                  className="inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-xl border border-[#D7E7F6] bg-white text-[#2BB8BF] transition-colors hover:bg-[#F3FAFF] hover:text-[#0D7098] sm:h-10 sm:w-10"
                   onClick={() => setOpen(false)}
                   aria-label="Volver"
                 >
@@ -932,10 +921,10 @@ export default function AddToCartPackageDialog({
                 </button>
 
                 <div className="min-w-0">
-                  <div className="text-[10px] font-bold uppercase tracking-[0.12em] text-[#6A85A6]">
+                  <div className="text-[9px] font-bold uppercase tracking-[0.1em] text-[#6A85A6] sm:text-[10px] sm:tracking-[0.12em]">
                     Total a pagar
                   </div>
-                  <div className="text-[18px] font-black leading-none tracking-[-0.01em] text-[#0798BA]">
+                  <div className="whitespace-nowrap text-[16px] font-black leading-none tracking-[-0.01em] text-[#0798BA] sm:text-[18px]">
                     {formatAmountCents(pricing.subtotalAmount, effectiveCurrency)}
                   </div>
                 </div>
@@ -962,7 +951,7 @@ export default function AddToCartPackageDialog({
                 type="button"
                 onClick={() => void addToCart()}
                 disabled={loading || !canSubmit}
-                className="h-12 w-full shrink-0 gap-2 rounded-full bg-[#2BB8BF] px-7 text-[15px] font-semibold text-white shadow-[0_10px_26px_rgba(43,184,191,0.32)] transition-all duration-300 ease-[cubic-bezier(0.16,1,0.3,1)] hover:bg-[#22A9B0] hover:shadow-[0_14px_32px_rgba(43,184,191,0.42)] active:scale-[0.98] disabled:opacity-50 disabled:shadow-none sm:w-auto"
+                className="h-11 min-w-0 flex-1 shrink-0 gap-1.5 rounded-full bg-[#2BB8BF] px-3 text-[13px] font-semibold text-white shadow-[0_8px_20px_rgba(43,184,191,0.25)] transition-all duration-300 ease-[cubic-bezier(0.16,1,0.3,1)] hover:bg-[#22A9B0] hover:shadow-[0_14px_32px_rgba(43,184,191,0.42)] active:scale-[0.98] disabled:opacity-50 disabled:shadow-none sm:h-12 sm:flex-none sm:gap-2 sm:px-7 sm:text-[15px]"
               >
                 {loading ? 'Agregando...' : 'Continuar reserva'}
                 <ChevronRight className="h-5 w-5" />

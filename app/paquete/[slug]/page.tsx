@@ -140,7 +140,7 @@ export default async function PaquetePage({ params }: { params: Promise<{ slug: 
   const { slug } = await params;
   if (!firebaseEnabled) {
     return (
-      <>
+      <div className="w-full min-w-0 overflow-x-clip">
         <Navbar variant="homeMockup" reserveSpace />
         <WhatsAppButton />
         <section className="py-24 bg-white">
@@ -156,7 +156,7 @@ export default async function PaquetePage({ params }: { params: Promise<{ slug: 
           </div>
         </section>
         <HomeFooter />
-      </>
+      </div>
     );
   }
   const paquete = await getPaquete(slug);
@@ -178,14 +178,13 @@ export default async function PaquetePage({ params }: { params: Promise<{ slug: 
   const aboutText = paquete.descripcion
     ? paquete.descripcion.replace(/<[^>]*>/g, ' ').replace(/\s+/g, ' ').trim()
     : '';
-  const featureCards = [
-    { icon: Clock3, title: paquete.duracion || 'Duración total', subtitle: 'Duración total' },
-    { icon: CreditCard, title: 'Pagá en cuotas', subtitle: 'Sin interés' },
-    { icon: Headphones, title: 'Asistencia 24/7', subtitle: 'Durante tu viaje' },
-  ];
+  // const featureCards = [
+  //   { icon: Clock3, title: paquete.duracion || 'Duración total', subtitle: 'Duración total' },
+  //   { icon: Headphones, title: 'Asistencia 24/7', subtitle: 'Durante tu viaje' },
+  // ];
 
   return (
-    <div className="min-h-screen bg-[#F5FAFF]">
+    <div className="min-h-screen w-full min-w-0 overflow-x-clip bg-[#F5FAFF]">
       <PaqueteSchema paquete={paquete} />
       <Navbar variant="homeMockup" reserveSpace />
       <WhatsAppButton />
@@ -200,7 +199,7 @@ export default async function PaquetePage({ params }: { params: Promise<{ slug: 
           <span className="text-[#224165]">{paquete.titulo}</span>
         </div>
 
-        <div className="mt-4 pt-8 md:pt-16 grid grid-cols-1 gap-6 xl:grid-cols-[minmax(0,1fr)_360px]">
+        <div className="mt-4 grid grid-cols-1 gap-6 xl:grid-cols-[minmax(0,1fr)_360px]">
           <section className="space-y-5">
             <PaqueteCarousel
               images={images}
@@ -226,21 +225,14 @@ export default async function PaquetePage({ params }: { params: Promise<{ slug: 
                 </div>
               </div>
 
-              <div className="mt-5 grid grid-cols-2 gap-3 md:grid-cols-4">
-                {featureCards.map((f) => (
-                  <div key={f.title} className="rounded-2xl border border-[#D8E9F8] bg-white px-4 py-3">
-                    <f.icon className="h-4 w-4 text-[#14A0C5]" />
-                    <div className="mt-2 text-xs font-extrabold text-[#17395E]">{f.title}</div>
-                    <div className="mt-0.5 text-[11px] text-[#5A7898]">{f.subtitle}</div>
-                  </div>
-                ))}
-              </div>
-
               {images.length > 1 ? (
                 <div className="mt-5">
                   <PaqueteGalleryGrid images={images.slice(0)} title={paquete.titulo} />
                 </div>
               ) : null}
+            </div>
+            <div className="xl:hidden">
+              <PaqueteSidebar paquete={paquete} compact />
             </div>
             {(paquete.incluye.length > 0 || (paquete.noIncluye && paquete.noIncluye.length > 0)) && (
               <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
@@ -292,7 +284,7 @@ export default async function PaquetePage({ params }: { params: Promise<{ slug: 
             </div>
           </section>
 
-          <aside className="space-y-6">
+          <aside className="hidden space-y-6 xl:block">
             <div className="xl:sticky xl:top-24">
               <PaqueteSidebar paquete={paquete} />
             </div>

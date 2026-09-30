@@ -42,7 +42,7 @@ export default function HomeClient({
   );
 
   return (
-    <div className="min-h-[100dvh] bg-[#F5FAFF]">
+    <div className="min-h-[100dvh] w-full min-w-0 overflow-x-clip bg-[#F5FAFF]">
       <Navbar variant="homeMockup" />
       <HomeHero paquetes={paquetes} backgroundImage={banners?.[0] || null} />
       <ScrollReveal variant="up" delayMs={20}>

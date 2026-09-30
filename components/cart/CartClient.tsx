@@ -84,7 +84,7 @@ function getExtraTotalAmount(extra: any, people: number): number {
 
 function CartSkeleton() {
   return (
-    <div className="container mx-auto px-4 py-10 md:px-6 lg:px-8">
+    <div className="container mx-auto w-full min-w-0 overflow-x-clip px-4 py-10 md:px-6 lg:px-8">
       <div className="animate-pulse space-y-6">
         <div className="h-4 w-56 rounded-full bg-[#DCEBFA]" />
         <div className="flex items-start justify-between gap-6">
@@ -157,6 +157,7 @@ export default function CartClient() {
   const editSeatAbortRef = useRef<AbortController | null>(null);
   const editSeatSeqRef = useRef(0);
   const [deletingItemIds, setDeletingItemIds] = useState<string[]>([]);
+  const deletingItemIdsRef = useRef<Set<string>>(new Set());
   const [deleteStatus, setDeleteStatus] = useState<{ tone: 'loading' | 'success'; text: string } | null>(null);
   const deleteStatusTimeoutRef = useRef<number | null>(null);
 
@@ -173,13 +174,21 @@ export default function CartClient() {
     const res = await fetch('/api/cart', { cache: 'no-store' });
     if (!res.ok) throw new Error('No se pudo cargar el carrito.');
     const json = (await res.json()) as CartApiResponse;
-    setData(json);
+    const pendingDeleteIds = deletingItemIdsRef.current;
+    const visibleJson = pendingDeleteIds.size
+      ? {
+          ...json,
+          items: json.items.filter((item) => !pendingDeleteIds.has(String(item.id))),
+          invalid: json.invalid?.filter((item) => !pendingDeleteIds.has(item.itemId)),
+        }
+      : json;
+    setData(visibleJson);
     window.dispatchEvent(new Event('cart-updated'));
-    setTermsAccepted(Boolean(json?.cart?.termsAccepted));
-    if (json?.cart?.termsAccepted) {
+    setTermsAccepted(Boolean(visibleJson?.cart?.termsAccepted));
+    if (visibleJson?.cart?.termsAccepted) {
       setTermsError(null);
     }
-    return json;
+    return visibleJson;
   };
 
   const validateCart = async () => {
@@ -190,7 +199,25 @@ export default function CartClient() {
     });
     if (!res.ok) return;
     const json = (await res.json()) as CartApiResponse;
-    setData(json);
+    const pendingDeleteIds = deletingItemIdsRef.current;
+    const visibleItems = pendingDeleteIds.size
+      ? json.items.filter((item) => !pendingDeleteIds.has(String(item.id)))
+      : json.items;
+    const visibleJson = pendingDeleteIds.size
+      ? {
+          ...json,
+          items: visibleItems,
+          invalid: json.invalid?.filter((item) => !pendingDeleteIds.has(item.itemId)),
+          cart: {
+            ...json.cart,
+            amountTotal: visibleItems.reduce(
+              (sum, item) => sum + (typeof item.subtotalAmount === 'number' ? item.subtotalAmount : 0),
+              0
+            ),
+          },
+        }
+      : json;
+    setData(visibleJson);
     window.dispatchEvent(new Event('cart-updated'));
   };
 
@@ -447,13 +474,38 @@ export default function CartClient() {
   );
 
   const removeItem = async (itemId: string) => {
-    if (!itemId || deletingItemIds.includes(itemId)) return;
+    if (!itemId || deletingItemIds.length > 0) return;
     setError(null);
+    const previousData = data;
     if (deleteStatusTimeoutRef.current) {
       window.clearTimeout(deleteStatusTimeoutRef.current);
       deleteStatusTimeoutRef.current = null;
     }
+    setData((previous) => {
+      if (!previous) return previous;
+      const remainingItems = previous.items.filter((item) => String(item.id) !== itemId);
+      const amountTotal = remainingItems.reduce(
+        (sum, item) => sum + (typeof item.subtotalAmount === 'number' ? item.subtotalAmount : 0),
+        0
+      );
+      const activeExpirations = remainingItems
+        .filter((item) => String(item.holdStatus ?? 'active') === 'active')
+        .map((item) => toMs(item.expiresAtMs ?? item.expiresAt))
+        .filter((expiresAt) => expiresAt > Date.now());
+      return {
+        ...previous,
+        items: remainingItems,
+        invalid: previous.invalid?.filter((invalidItem) => invalidItem.itemId !== itemId),
+        cart: {
+          ...previous.cart,
+          amountTotal,
+          ...(activeExpirations.length ? { expiresAtMs: Math.min(...activeExpirations) } : {}),
+        },
+      };
+    });
+    deletingItemIdsRef.current.add(itemId);
     setDeletingItemIds((prev) => [...prev, itemId]);
+    setDeleteStatus({ tone: 'loading', text: 'Quitando el item y liberando sus butacas…' });
     try {
       const res = await fetch('/api/cart/items', {
         method: 'DELETE',
@@ -462,12 +514,15 @@ export default function CartClient() {
       });
       if (!res.ok) {
         const d = await res.json().catch(() => ({}));
+        setData(previousData);
+        setDeleteStatus(null);
         setError(d?.error || 'No se pudo eliminar el item.');
         return;
       }
-      const refreshed = await fetchCart();
-      await validateCart();
-      if ((refreshed?.items?.length ?? 0) > 0) {
+      window.dispatchEvent(new Event('cart-updated'));
+      void fetchCart().catch(() => {});
+      const remainingItems = previousData?.items?.filter((item) => String(item.id) !== itemId) ?? [];
+      if (remainingItems.length > 0) {
         setDeleteStatus({ tone: 'success', text: 'Item eliminado correctamente.' });
         deleteStatusTimeoutRef.current = window.setTimeout(() => {
           setDeleteStatus(null);
@@ -476,7 +531,12 @@ export default function CartClient() {
       } else {
         setDeleteStatus(null);
       }
+    } catch (e) {
+      setData(previousData);
+      setDeleteStatus(null);
+      setError(e instanceof Error ? e.message : 'No se pudo eliminar el item.');
     } finally {
+      deletingItemIdsRef.current.delete(itemId);
       setDeletingItemIds((prev) => prev.filter((currentId) => currentId !== itemId));
     }
   };
@@ -597,7 +657,7 @@ export default function CartClient() {
   }
 
   return (
-    <div className="container mx-auto pt-[7rem] md:pt-[8rem] lg:pt-[8rem] px-4 py-6 sm:px-5 md:px-6 lg:px-8 lg:py-8">
+    <div className="container mx-auto w-full min-w-0 overflow-x-clip px-4 pb-36 pt-5 sm:px-5 md:px-6 md:pt-6 lg:px-8 lg:pb-8 lg:pt-8">
       <div className="text-sm text-gray-500">
         <Link href="/" className="hover:text-[#2BB8BF]">Inicio</Link>
         <span className="mx-2">›</span>
@@ -644,7 +704,7 @@ export default function CartClient() {
         </div> */}
       </div>
 
-      <div className="mt-4 grid grid-cols-1 gap-3 sm:grid-cols-3">
+      <div className="mt-4 hidden grid-cols-1 gap-3 sm:grid sm:grid-cols-3">
         <FeaturePill icon={ShieldCheck} title="Reservas flexibles" subtitle="Cambios sin cargo hasta 30 días antes" />
         <FeaturePill icon={CreditCard} title="Paga en cuotas sin interés" subtitle="Con tarjetas seleccionadas" />
         <FeaturePill icon={Headphones} title="Atención 24/7" subtitle="Estamos con vos siempre" />
@@ -659,15 +719,17 @@ export default function CartClient() {
         <div
           className={cn(
             'mt-4 flex items-center gap-3 rounded-2xl px-4 py-3 text-sm',
-            'border border-emerald-200 bg-emerald-50 text-emerald-700'
+            deleteStatus.tone === 'loading'
+              ? 'border border-sky-200 bg-sky-50 text-sky-800'
+              : 'border border-emerald-200 bg-emerald-50 text-emerald-700'
           )}
         >
-          <CheckCircle2 className="h-4 w-4" />
+          {deleteStatus.tone === 'loading' ? <Loader2 className="h-4 w-4 animate-spin" /> : <CheckCircle2 className="h-4 w-4" />}
           <span className="font-semibold">{deleteStatus.text}</span>
         </div>
       ) : null}
 
-      <div className="mt-6 grid grid-cols-1 gap-6 lg:grid-cols-3">
+      <div className="mt-5 grid min-w-0 grid-cols-1 gap-5 lg:grid-cols-3 lg:gap-6">
         <div className="space-y-4 lg:col-span-2">
           {items.length === 0 ? (
             <div className="rounded-3xl border border-[#E4EDF6] bg-white p-8 text-center">
@@ -745,8 +807,8 @@ export default function CartClient() {
                     </div>
                   ) : null}
                   <div className="p-4 sm:p-5">
-                    <div className={cn("flex flex-col gap-4 lg:flex-row lg:gap-5", itemIsInvalid && "opacity-40 grayscale pointer-events-none select-none")}>
-                      <div className="relative h-[200px] w-full shrink-0 overflow-hidden rounded-2xl bg-gray-100 sm:h-[220px] lg:h-[140px] lg:w-[220px]">
+                     <div className={cn("flex min-w-0 flex-row gap-3 sm:gap-4 lg:gap-5", itemIsInvalid && "opacity-40 grayscale pointer-events-none select-none")}>
+                      <div className="relative h-[112px] w-[92px] shrink-0 overflow-hidden rounded-xl bg-gray-100 sm:h-[180px] sm:w-[180px] sm:rounded-2xl lg:h-[140px] lg:w-[220px]">
                         <Image src={img} alt={String(it.packageTitle || 'Paquete')} fill className="object-cover" />
                         {it.packageIsFeatured ? (
                           <div className="absolute left-3 bottom-3 rounded-full bg-black/55 px-3 py-1 text-xs font-semibold text-white">
@@ -917,7 +979,7 @@ export default function CartClient() {
 
         <div className="lg:col-span-1">
           <div className="space-y-4 lg:sticky lg:top-24">
-            <div className="rounded-3xl border border-gray-200 bg-white shadow-sm p-5">
+            <div className="rounded-3xl border border-gray-200 bg-white p-4 shadow-sm sm:p-5">
               <div className="text-base font-semibold text-gray-900">Resumen de pago</div>
               <div className="mt-4 space-y-3 text-sm text-gray-700">
                 {/* <div className="flex items-center justify-between">
@@ -949,10 +1011,10 @@ export default function CartClient() {
               </div>
 
               <div className="mt-5 space-y-2">
-                <div className="rounded-2xl border border-[#DCEAF8] bg-[#F8FCFF] p-4">
+                <div className="hidden rounded-2xl border border-[#DCEAF8] bg-[#F8FCFF] p-4 lg:block">
                   <div className="flex items-start gap-3">
                     <Checkbox
-                      id="cart-terms-checkbox"
+                      id="cart-terms-checkbox-desktop"
                       checked={termsAccepted}
                       disabled={termsSaving}
                       aria-required="true"
@@ -966,7 +1028,7 @@ export default function CartClient() {
                     />
                     <div className="min-w-0">
                       <label
-                        htmlFor="cart-terms-checkbox"
+                        htmlFor="cart-terms-checkbox-desktop"
                         className="text-sm font-semibold leading-5 text-gray-900"
                       >
                         Acepto los{' '}
@@ -989,7 +1051,7 @@ export default function CartClient() {
                   </div>
                 </div>
                 <Button
-                  className="group h-12 w-full gap-2 rounded-full bg-[#2BB8BF] text-[15px] font-semibold text-white shadow-[0_10px_26px_rgba(43,184,191,0.32)] transition-all duration-300 ease-[cubic-bezier(0.16,1,0.3,1)] hover:bg-[#22A9B0] hover:shadow-[0_14px_32px_rgba(43,184,191,0.42)] active:scale-[0.98] disabled:opacity-50 disabled:shadow-none"
+                  className="group hidden h-12 w-full gap-2 rounded-full bg-[#2BB8BF] text-[15px] font-semibold text-white shadow-[0_10px_26px_rgba(43,184,191,0.32)] transition-all duration-300 ease-[cubic-bezier(0.16,1,0.3,1)] hover:bg-[#22A9B0] hover:shadow-[0_14px_32px_rgba(43,184,191,0.42)] active:scale-[0.98] disabled:opacity-50 disabled:shadow-none lg:flex"
                   disabled={!canCheckout || !termsAccepted || termsSaving}
                   onClick={() => void handleCheckoutClick()}
                 >
@@ -999,7 +1061,7 @@ export default function CartClient() {
                 <Button
                   asChild
                   variant="outline"
-                  className="h-12 w-full rounded-full border-[#D7E8F7] text-[15px] font-semibold text-[#112B49] transition-colors hover:border-[#2BB8BF] hover:bg-[#F4FCFC] hover:text-[#187AA6]"
+                  className="hidden h-12 w-full rounded-full border-[#D7E8F7] text-[15px] font-semibold text-[#112B49] transition-colors hover:border-[#2BB8BF] hover:bg-[#F4FCFC] hover:text-[#187AA6] lg:flex"
                 >
                   <Link href="/paquetes">Seguir explorando</Link>
                 </Button>
@@ -1198,6 +1260,35 @@ export default function CartClient() {
           </div>
         </DialogContent>
       </Dialog>
+      {items.length > 0 && <div className="fixed inset-x-0 bottom-0 z-40 border-t border-slate-200 bg-white/95 px-4 pt-3 shadow-[0_-12px_36px_rgba(15,45,60,0.12)] backdrop-blur-xl lg:hidden" style={{ paddingBottom: 'calc(env(safe-area-inset-bottom) + 0.75rem)' }}>
+        <div className="mx-auto max-w-2xl">
+          <div className="flex items-start gap-2.5">
+            <Checkbox
+              id="cart-terms-checkbox-mobile"
+              checked={termsAccepted}
+              disabled={termsSaving}
+              aria-required="true"
+              aria-invalid={termsError ? true : undefined}
+              onCheckedChange={(checked) => void persistTermsAcceptance(checked === true)}
+              className="mt-0.5 h-5 w-5 shrink-0"
+            />
+            <label htmlFor="cart-terms-checkbox-mobile" className="min-w-0 text-xs leading-5 text-slate-700">
+              Acepto los <Link href="/terminos-condiciones" className="font-semibold text-[#14838A] underline underline-offset-2">términos y condiciones</Link>
+            </label>
+          </div>
+          {termsError && <p className="mt-1 pl-7 text-[11px] font-semibold text-red-600" role="alert">{termsError}</p>}
+          <div className="mt-2 flex items-center justify-between gap-3">
+            <div className="min-w-0"><p className="text-[10px] font-bold uppercase tracking-wider text-slate-500">Total</p><p className="truncate text-lg font-extrabold leading-tight text-[#183F4A]">{formatCurrency(amountTotal, currency)}</p></div>
+            <Button
+              className="h-11 shrink-0 rounded-full bg-[#2BB8BF] px-5 text-sm font-bold text-white shadow-md hover:bg-[#22A9B0] disabled:opacity-50"
+              disabled={!canCheckout || !termsAccepted || termsSaving}
+              onClick={() => void handleCheckoutClick()}
+            >
+              Ir a pagar <ChevronRight className="ml-1 h-4 w-4" />
+            </Button>
+          </div>
+        </div>
+      </div>}
     </div>
   );
 }

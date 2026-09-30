@@ -7,7 +7,7 @@ function Line({ className = '' }: { className?: string }) {
 
 export default function LoadingPaqueteDetail() {
   return (
-    <div className="min-h-screen bg-[#F5FAFF]">
+    <div className="min-h-screen w-full min-w-0 overflow-x-clip bg-[#F5FAFF]">
       <Navbar variant="homeMockup" reserveSpace />
 
       <main className="container mx-auto px-4 py-6 md:px-6 md:py-8 lg:px-8">

@@ -7,11 +7,11 @@ function Line({ className = '' }: { className?: string }) {
 
 export default function LoadingBlogPost() {
   return (
-    <div className="min-h-[100dvh] bg-white">
+    <div className="min-h-[100dvh] w-full min-w-0 overflow-x-clip bg-white">
       <Navbar variant="homeMockup" reserveSpace />
 
       <section className="pb-10 md:pb-14">
-        <div className="relative left-1/2 right-1/2 -mx-[50vw] h-[420px] w-full max-w-screen skeleton md:h-[560px]" />
+        <div className="relative left-1/2 h-[420px] w-screen max-w-[100vw] -translate-x-1/2 skeleton md:h-[560px]" />
 
         <div className="container mx-auto px-4 md:px-6 lg:px-8">
           <div className="mt-10 grid grid-cols-1 gap-10 lg:grid-cols-[minmax(0,1fr)_320px]">

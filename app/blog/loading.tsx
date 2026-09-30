@@ -7,7 +7,7 @@ function Line({ className = '' }: { className?: string }) {
 
 export default function LoadingBlog() {
   return (
-    <div className="min-h-[100dvh] bg-[#F5FAFF]">
+    <div className="min-h-[100dvh] w-full min-w-0 overflow-x-clip bg-[#F5FAFF]">
       <Navbar variant="homeMockup" reserveSpace />
 
       <section className="border-b border-[#E4EDF6] pt-16 md:pt-20">

@@ -193,9 +193,9 @@ export default function UserProfilePage() {
   ];
 
   return (
-    <div className="min-h-screen bg-[#F5FAFF] text-[#18333E]">
+    <div className="min-h-screen w-full min-w-0 overflow-x-clip bg-[#F5FAFF] text-[#18333E]">
       <Navbar variant="homeMockup" reserveSpace />
-      <main className="container mx-auto w-full px-4 pb-20 pt-8 md:px-6 lg:px-8 lg:pt-12">
+      <main className="container mx-auto w-full min-w-0 px-4 pb-20 pt-6 sm:px-6 md:pt-8 lg:px-8 lg:pt-12">
         {loading ? (
           <div className="flex min-h-[55vh] items-center justify-center gap-3 text-sm font-medium text-slate-500"><Loader2 className="h-5 w-5 animate-spin text-[#2BB8BF]" />Preparando tu espacio Explorarg…</div>
         ) : error && !profile ? (
@@ -204,20 +204,20 @@ export default function UserProfilePage() {
           </div>
         ) : profile ? (
           <>
-            <header className="mb-8 flex flex-col justify-between gap-6 border-b border-[#DCE8EC] pb-7 sm:flex-row sm:items-end">
-              <div className="flex items-center gap-4">
+            <header className="mb-6 flex min-w-0 flex-col justify-between gap-4 border-b border-[#DCE8EC] pb-6 sm:mb-8 sm:flex-row sm:items-end sm:gap-6 sm:pb-7">
+              <div className="flex min-w-0 items-center gap-3 sm:gap-4">
                 <div className="flex h-14 w-14 shrink-0 items-center justify-center rounded-2xl bg-[#DDF5F3] text-lg font-bold text-[#167C80]">{initials(profile.nombre, profile.apellido)}</div>
-                <div><p className="text-xs font-bold uppercase tracking-[0.18em] text-[#248E91]">Comunidad Explorarg</p><h1 className="mt-1 text-3xl font-bold tracking-tight text-[#18333E] sm:text-4xl">Hola, {profile.nombre}</h1><p className="mt-1 text-sm text-slate-500">Tu espacio para organizar tus viajes y beneficios.</p></div>
+                <div className="min-w-0"><p className="text-[10px] font-bold uppercase tracking-[0.14em] text-[#248E91] sm:text-xs sm:tracking-[0.18em]">Comunidad Explorarg</p><h1 className="mt-1 break-words text-2xl font-bold tracking-tight text-[#18333E] sm:text-4xl">Hola, {profile.nombre}</h1><p className="mt-1 text-xs text-slate-500 sm:text-sm">Tu espacio para organizar tus viajes y beneficios.</p></div>
               </div>
-              <button onClick={logout} className="inline-flex h-10 items-center gap-2 self-start rounded-full border border-[#D7E3E7] bg-white px-4 text-sm font-semibold text-slate-600 transition hover:border-slate-400 hover:text-slate-900 sm:self-auto"><LogOut className="h-4 w-4" />Cerrar sesión</button>
+              <button onClick={logout} className="inline-flex h-10 shrink-0 items-center gap-2 self-start rounded-full border border-[#D7E3E7] bg-white px-4 text-xs font-semibold text-slate-600 transition hover:border-slate-400 hover:text-slate-900 sm:self-auto sm:text-sm"><LogOut className="h-4 w-4" />Cerrar sesión</button>
             </header>
 
-            <div className="grid gap-8 lg:grid-cols-[220px_minmax(0,1fr)]">
+            <div className="grid min-w-0 gap-5 sm:gap-8 lg:grid-cols-[210px_minmax(0,1fr)]">
               <aside className="lg:sticky lg:top-28 lg:h-fit">
-                <nav aria-label="Secciones de mi cuenta" className="flex gap-2 overflow-x-auto pb-1 lg:flex-col lg:overflow-visible">
+                <nav aria-label="Secciones de mi cuenta" className="-mx-4 flex max-w-[calc(100vw-2rem)] gap-2 overflow-x-auto px-4 pb-1 [scrollbar-width:none] sm:mx-0 sm:max-w-full sm:px-0 lg:flex-col lg:overflow-visible">
                   {sections.map(({ id, label, icon: Icon }) => (
-                    <button key={id} onClick={() => { setSection(id); setError(''); setNotice(''); }} className={`inline-flex shrink-0 items-center gap-3 rounded-xl px-4 py-3 text-left text-sm font-semibold transition ${section === id ? 'bg-[#183F4A] text-white' : 'text-slate-600 hover:bg-white hover:text-[#183F4A]'}`}>
-                      <Icon className="h-[17px] w-[17px]" />{label}{section === id && <ChevronRight className="ml-auto h-4 w-4" />}
+                    <button key={id} onClick={() => { setSection(id); setError(''); setNotice(''); }} className={`inline-flex min-h-10 shrink-0 items-center gap-2 rounded-xl px-3 py-2.5 text-xs font-semibold transition sm:gap-3 sm:px-4 sm:py-3 sm:text-sm ${section === id ? 'bg-[#183F4A] text-white' : 'text-slate-600 hover:bg-white hover:text-[#183F4A]'}`}>
+                      <Icon className="h-4 w-4 sm:h-[17px] sm:w-[17px]" />{label}<ChevronRight className={`h-4 w-4 lg:ml-auto ${section === id ? '' : 'hidden'}`} />
                     </button>
                   ))}
                 </nav>

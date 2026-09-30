@@ -469,12 +469,12 @@ export default function Navbar({ transparent = false, forceTransparent = false, 
   const navContent = isHomeMockup ? (
     <nav
       ref={navRef as unknown as React.RefObject<HTMLElement>}
-      className="fixed top-0 left-0 right-0 z-[100] px-3 pt-[max(0.6rem,env(safe-area-inset-top))] sm:px-4"
+      className="fixed inset-x-0 top-0 z-[100] box-border w-full max-w-[100vw] overflow-x-clip px-0 pt-[max(0.6rem,env(safe-area-inset-top))]"
       onClick={() => {
         if (mobileMenuOpen) setMobileMenuOpen(false);
       }}
     >
-      <div className="container mx-auto">
+      <div className="container mx-auto w-full px-3 sm:px-4">
         <div
           className={cn(
             'flex items-center justify-between gap-3 rounded-[26px] border border-white/[0.07] px-3 backdrop-blur-2xl backdrop-saturate-150 transition-all duration-500 ease-[cubic-bezier(0.16,1,0.3,1)] sm:px-5',

@@ -121,7 +121,7 @@ export default async function BlogPostPage({ params }: { params: Promise<{ slug:
   const shareDescription = post.extracto || post.contenido.replace(/<[^>]*>/g, '').substring(0, 160);
 
   return (
-    <>
+    <div className="w-full min-w-0 overflow-x-clip bg-white">
       <Navbar variant="homeMockup" reserveSpace />
       <WhatsAppButton />
       {coverImage ? (
@@ -268,6 +268,6 @@ export default async function BlogPostPage({ params }: { params: Promise<{ slug:
         </div>
       </div>
       <HomeFooter />
-    </>
+    </div>
   );
 }

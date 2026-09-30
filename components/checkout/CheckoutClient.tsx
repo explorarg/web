@@ -18,6 +18,7 @@ import {
   ShieldCheck,
   CheckCircle2,
   ChevronRight,
+  ChevronUp,
   CreditCard,
   Wallet,
   Landmark,
@@ -127,6 +128,7 @@ export default function CheckoutClient(props: CheckoutClientProps) {
     ? `${CHECKOUT_STORAGE_PREFIX}cart_${props.cartId}`
     : getCheckoutStorageKey(props.experience.slug, props.date, props.people);
   const [step, setStep] = useState<CheckoutStep>('form');
+  const [mobileSummaryOpen, setMobileSummaryOpen] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [isValidating, setIsValidating] = useState(isCartMode);
   const [communityUser, setCommunityUser] = useState<FirebaseUser | null>(null);
@@ -430,6 +432,8 @@ export default function CheckoutClient(props: CheckoutClientProps) {
     ],
     [hasAdditionalTravelers]
   );
+  const currentStepIndex = Math.max(0, steps.findIndex((item) => item.id === step));
+  const currentStep = steps[currentStepIndex];
 
   useEffect(() => {
     setForm((prev) => {
@@ -826,8 +830,9 @@ export default function CheckoutClient(props: CheckoutClientProps) {
   ]);
 
   return (
-    <div className="min-h-screen bg-slate-50/50 py-8 md:py-12 selection:bg-[#2BB8BF]/20 selection:text-[#2BB8BF]">
-      <div className="container mx-auto max-w-7xl px-4">
+    <>
+    <div className="min-h-screen w-full min-w-0 overflow-x-clip bg-slate-50/50 py-6 pb-32 md:py-12 md:pb-12 selection:bg-[#2BB8BF]/20 selection:text-[#2BB8BF]">
+      <div className="container mx-auto w-full min-w-0 max-w-7xl px-4">
         {/* Header Navigation */}
         <motion.div
           initial={{ opacity: 0, y: -20 }}
@@ -866,7 +871,31 @@ export default function CheckoutClient(props: CheckoutClientProps) {
           </motion.header>
 
           {/* Stepper (Compact) */}
-          <div className="flex items-center justify-center gap-4 py-2">
+          <div
+            className="mx-auto w-full max-w-md rounded-2xl border border-slate-200/80 bg-white px-4 py-3 shadow-sm sm:hidden"
+            role="progressbar"
+            aria-label="Progreso del checkout"
+            aria-valuemin={1}
+            aria-valuemax={steps.length}
+            aria-valuenow={currentStepIndex + 1}
+          >
+            <div className="flex items-center justify-between gap-3">
+              <div className="min-w-0">
+                <p className="text-[9px] font-extrabold uppercase tracking-[0.16em] text-slate-400">Paso {currentStepIndex + 1} de {steps.length}</p>
+                <p className="mt-0.5 truncate text-sm font-bold text-slate-900">{currentStep.title}</p>
+              </div>
+              <span className="shrink-0 rounded-full bg-[#E8F8F9] px-2.5 py-1 text-[10px] font-bold text-[#168E96]">
+                {Math.round(((currentStepIndex + 1) / steps.length) * 100)}%
+              </span>
+            </div>
+            <div className="mt-3 grid gap-1.5" style={{ gridTemplateColumns: `repeat(${steps.length}, minmax(0, 1fr))` }}>
+              {steps.map((item, idx) => (
+                <span key={item.id} className={`h-1.5 rounded-full transition-colors ${idx <= currentStepIndex ? 'bg-[#2BB8BF]' : 'bg-slate-100'}`} />
+              ))}
+            </div>
+          </div>
+
+          <div className="hidden items-center justify-center gap-4 py-2 sm:flex">
             {steps.map((s, idx) => {
               const Icon = s.icon;
               const isActive = step === s.id;
@@ -920,7 +949,7 @@ export default function CheckoutClient(props: CheckoutClientProps) {
                     </p>
                   </CardHeader>
                   <CardContent className="p-6">
-                    <form onSubmit={handleSubmitForm} className="space-y-5" noValidate>
+                    <form id="checkout-customer-form" onSubmit={handleSubmitForm} className="space-y-5" noValidate>
                       <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
                         <div className="space-y-1.5">
                           <Label htmlFor="customerFirstName" className="text-xs font-bold text-slate-700 ml-1">Nombre *</Label>
@@ -1087,7 +1116,7 @@ export default function CheckoutClient(props: CheckoutClientProps) {
                     </p>
                   </CardHeader>
                   <CardContent className="p-6">
-                    <form onSubmit={handleSubmitCompanions} className="space-y-5" noValidate>
+                    <form id="checkout-companions-form" onSubmit={handleSubmitCompanions} className="space-y-5" noValidate>
                       {form.passengerDetails.map((traveler, index) => {
                         const travelerErrors = getTravelerErrors(traveler);
                         return (
@@ -1343,7 +1372,7 @@ export default function CheckoutClient(props: CheckoutClientProps) {
           </div>
             </div>
 
-            <aside className="min-w-0 lg:sticky lg:top-6">
+            <aside className="hidden min-w-0 lg:sticky lg:top-6 lg:block">
               <Card className="overflow-hidden rounded-2xl border-0 shadow-lg shadow-slate-200/50 ring-1 ring-slate-200/70 backdrop-blur supports-[backdrop-filter]:bg-white/95">
                 <CardHeader className="bg-slate-50/70 px-5 pb-3 pt-4 sm:px-6">
                   <CardTitle className="text-xs font-bold uppercase tracking-widest text-slate-500">Resumen de pago</CardTitle>
@@ -1372,6 +1401,65 @@ export default function CheckoutClient(props: CheckoutClientProps) {
           </div>
         </div>
       </div>
-    </div>
+      </div>
+      <div className="fixed inset-x-0 bottom-0 z-50 border-t border-slate-200 bg-white/95 px-4 pt-3 shadow-[0_-12px_36px_rgba(15,45,60,0.12)] backdrop-blur-xl lg:hidden" style={{ paddingBottom: 'calc(env(safe-area-inset-bottom) + 0.75rem)' }}>
+        <div className="mx-auto max-w-2xl">
+          {mobileSummaryOpen ? (
+            <div id="mobile-checkout-summary" className="mb-3 max-h-[42dvh] overflow-y-auto rounded-2xl border border-slate-200 bg-white p-4 shadow-[0_10px_30px_rgba(15,45,60,0.12)]" aria-label="Desglose del resumen de pago">
+              {!promotionVerified || isValidating ? (
+                <div className="space-y-3" aria-busy="true">
+                  <div className="flex items-center justify-between"><span className="text-sm font-semibold text-slate-800">Verificando precio</span><span className="text-xs text-slate-500">Un momento…</span></div>
+                  <Skeleton className="h-4 w-full" /><Skeleton className="h-4 w-4/5" /><Skeleton className="h-4 w-3/5" />
+                  {communityQuoteError ? <div role="alert" className="rounded-xl bg-rose-50 p-3 text-xs text-rose-700"><p className="font-semibold">No pudimos verificar el precio y los beneficios</p><p className="mt-1">{communityQuoteError}</p><Button type="button" variant="outline" size="sm" className="mt-3 h-9 border-rose-200 bg-white text-rose-700" onClick={() => setQuoteRefresh((value) => value + 1)}>Reintentar verificación</Button></div> : null}
+                </div>
+              ) : (
+                <div className="space-y-2.5 text-sm text-slate-700">
+                  <div className="mb-3 text-xs font-bold uppercase tracking-wider text-slate-500">Resumen de pago</div>
+                  <div className="flex items-center justify-between gap-3"><span>Subtotal · {totalTravelers} {totalTravelers === 1 ? 'pasajero' : 'pasajeros'}</span><span className="shrink-0 font-semibold text-slate-900">{formatAmountCents(checkoutBaseSubtotal, currency)}</span></div>
+                  {checkoutExtras.items.filter((extra: { code: string; label: string; amount: number }) => !isSinglePassengerSurchargeExtra(extra as any)).map((extra: { code: string; label: string; amount: number }) => <div key={extra.label} className="flex items-start justify-between gap-3"><span className="min-w-0">{extra.label}</span><span className="shrink-0 font-semibold text-slate-900">{formatAmountCents(extra.amount, currency)}</span></div>)}
+                  {checkoutSinglePassengerSurcharge.applies && <SinglePassengerSurchargeBreakdown label={checkoutSinglePassengerSurcharge.label} amountLabel={formatAmountCents(checkoutSinglePassengerSurcharge.amount, currency)} tone="teal" />}
+                  {appliedCommunityDiscount > 0 && <div className="flex items-start justify-between gap-3 font-medium text-[#187F80]"><span className="min-w-0">{communityQuote?.discount?.nombre ?? 'Beneficio de comunidad'}</span><span className="shrink-0">− {formatAmountCents(appliedCommunityDiscount, currency)}</span></div>}
+                  <div className="h-px bg-slate-200" />
+                  <div className="flex items-center justify-between gap-3"><span className="font-semibold text-slate-900">Total a pagar</span><span className="shrink-0 text-lg font-bold text-[#168E96]">{formatAmountCents(checkoutDisplayTotal, currency)}</span></div>
+                  <p className="text-xs font-medium capitalize text-slate-500">{isCartMode ? `${totalTravelers} ${totalTravelers === 1 ? 'viajero' : 'viajeros'} · ${cartData?.items?.length ?? 0} destino(s)` : `${people} ${people === 1 ? 'viajero' : 'viajeros'} · ${dateLabel}`}</p>
+                </div>
+              )}
+            </div>
+          ) : null}
+          <div className="flex items-center gap-2.5">
+            <div className="min-w-0 flex-1">
+              <button
+                type="button"
+                onClick={() => setMobileSummaryOpen((open) => !open)}
+                aria-expanded={mobileSummaryOpen}
+                aria-controls={mobileSummaryOpen ? 'mobile-checkout-summary' : undefined}
+                aria-label={mobileSummaryOpen ? 'Ocultar desglose del pago' : 'Ver desglose del pago'}
+                className="mb-0.5 inline-flex min-h-5 items-center gap-1 text-[10px] font-bold text-[#168E96]"
+              >
+                <ChevronUp className={`h-4 w-4 transition-transform ${mobileSummaryOpen ? 'rotate-180' : ''}`} />
+                <span>{mobileSummaryOpen ? 'Ocultar detalle' : 'Ver detalle'}</span>
+              </button>
+              <p className="text-[10px] font-bold uppercase tracking-wider text-slate-500">Total a pagar</p>
+              {promotionVerified && !isValidating ? <p className="truncate text-lg font-extrabold text-[#183F4A]">{formatAmountCents(checkoutDisplayTotal, currency)}</p> : <Skeleton className="mt-1 h-6 w-28" />}
+              {promotionVerified && appliedCommunityDiscount > 0 && <p className="truncate text-[10px] font-semibold text-emerald-700">Ahorrás {formatAmountCents(appliedCommunityDiscount, currency)}</p>}
+            </div>
+            <Button
+              type="button"
+              disabled={!promotionVerified || isValidating || (step === 'payment' && (isLoading || (isCartMode && !(cartData?.ok ?? false))))}
+              onClick={() => {
+                if (step === 'form') (document.getElementById('checkout-customer-form') as HTMLFormElement | null)?.requestSubmit();
+                else if (step === 'companions') (document.getElementById('checkout-companions-form') as HTMLFormElement | null)?.requestSubmit();
+                else if (isCartMode) void createMercadoPagoPreferenceForCart();
+                else void createMercadoPagoPreferenceForLegacy();
+              }}
+              className="h-12 shrink-0 rounded-xl bg-[#2BB8BF] px-4 text-sm font-bold text-white shadow-md hover:bg-[#199DA5] disabled:opacity-50 sm:px-5"
+            >
+              {step === 'form' ? (hasAdditionalTravelers ? 'Pasajeros' : 'Continuar') : step === 'companions' ? 'Ir al pago' : isLoading ? <Loader2 className="h-5 w-5 animate-spin" /> : 'Pagar'}
+              {step !== 'payment' && <ChevronRight className="ml-1 h-4 w-4" />}
+            </Button>
+          </div>
+        </div>
+      </div>
+    </>
   );
 }

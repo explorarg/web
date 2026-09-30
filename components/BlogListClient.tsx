@@ -71,7 +71,7 @@ export default function BlogListClient({ posts }: BlogListClientProps) {
   const rest = useLead ? filtered.slice(1) : filtered;
 
   return (
-    <div className="min-h-[100dvh] bg-[#F5FAFF]">
+    <div className="min-h-[100dvh] w-full min-w-0 overflow-x-clip bg-[#F5FAFF]">
       <Navbar variant="homeMockup" reserveSpace />
       <WhatsAppButton />
 

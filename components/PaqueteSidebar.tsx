@@ -10,9 +10,10 @@ import { getOperationalDepartureDates } from '@/lib/packages/resolve-departure';
 
 interface PaqueteSidebarProps {
   paquete: Paquete;
+  compact?: boolean;
 }
 
-export default function PaqueteSidebar({ paquete }: PaqueteSidebarProps) {
+export default function PaqueteSidebar({ paquete, compact = false }: PaqueteSidebarProps) {
   const destino = paquete.destino || paquete.eventoLugar || '—';
   const duracion = paquete.duracion || '—';
   const nextDate = useMemo(() => {
@@ -35,21 +36,21 @@ export default function PaqueteSidebar({ paquete }: PaqueteSidebarProps) {
   const [passengers, setPassengers] = useState(2);
 
   return (
-    <div className="space-y-4">
-      <div className="rounded-3xl border border-[#D2E5F6] bg-white shadow-[0_18px_40px_rgba(14,63,110,0.1)] p-5">
+    <div className={compact ? 'space-y-0' : 'space-y-4'}>
+      <div className={`rounded-2xl border border-[#D2E5F6] bg-white shadow-[0_18px_40px_rgba(14,63,110,0.1)] ${compact ? 'p-3.5 sm:p-4' : 'rounded-3xl p-5'}`}>
         <div className="flex items-center justify-between gap-2">
           <div className="rounded-full bg-[#E8F7FF] px-2.5 py-1 text-[10px] font-extrabold uppercase tracking-wide text-[#0A6E90]">
             Mejor precio
           </div>
         </div>
 
-        <div className="mt-4">
+        <div className={compact ? 'mt-2' : 'mt-4'}>
           <div className="text-xs font-semibold text-slate-500">Precio por persona {paquete.mostrarDesde ? 'desde' : ''}</div>
           <div className="mt-1 flex items-end gap-3">
-            <div className="text-[44px] leading-none font-black tracking-[-0.02em] text-[#0D223F]">
+            <div className={`${compact ? 'text-[30px] sm:text-[34px]' : 'text-[44px]'} leading-none font-black tracking-[-0.02em] text-[#0D223F]`}>
               ${paquete.precio.toLocaleString('es-AR')}
             </div>
-            <div className="mb-2 text-sm font-extrabold uppercase text-[#5A789A]">{paquete.moneda || 'ARS'}</div>
+            <div className={`${compact ? 'mb-0.5 text-[10px]' : 'mb-2 text-sm'} font-extrabold uppercase text-[#5A789A]`}>{paquete.moneda || 'ARS'}</div>
           </div>
         </div>
         {String((paquete as any)?.fechaVencimiento ?? '').trim() ? (
@@ -59,8 +60,8 @@ export default function PaqueteSidebar({ paquete }: PaqueteSidebarProps) {
           </div>
         ) : null}
 
-        <div className="mt-4 space-y-2">
-          <div className="rounded-2xl border border-[#D6E8F7] bg-white p-4">
+        <div className={compact ? 'mt-3 space-y-2' : 'mt-4 space-y-2'}>
+          <div className={`rounded-2xl border border-[#D6E8F7] bg-white ${compact ? 'p-3' : 'p-4'}`}>
             <div className="flex items-center gap-3">
               <div className="h-9 w-9 rounded-2xl bg-[#EDF8FF] flex items-center justify-center">
                 <MapPin className="h-4 w-4 text-[#2BB8BF]" />
@@ -90,10 +91,10 @@ export default function PaqueteSidebar({ paquete }: PaqueteSidebarProps) {
             </div>
           </div>
 
-          <div className="rounded-2xl border border-[#D6E8F7] bg-white p-4">
+          <div className={`rounded-2xl border border-[#D6E8F7] bg-white ${compact ? 'p-3' : 'p-4'}`}>
             <div className="text-xs font-semibold text-slate-500">Pasajeros</div>
             <div className="mt-2 flex items-center justify-between rounded-2xl border border-[#BFD8EE] bg-white px-3 py-2 shadow-[0_4px_12px_rgba(30,136,184,0.06)]">
-              <div className="inline-flex items-center gap-2 text-sm font-semibold text-slate-800">
+              <div className="inline-flex items-center gap-2 text-xs font-semibold text-slate-800 sm:text-sm">
                 <Users className="h-4 w-4 text-[#2BB8BF]" />
                 {passengers} adultos
               </div>
@@ -122,37 +123,22 @@ export default function PaqueteSidebar({ paquete }: PaqueteSidebarProps) {
             paquete={paquete}
             initialAdults={passengers}
             initialMinors={0}
-            triggerClassName="group h-12 w-full justify-center gap-2 rounded-full bg-[#2BB8BF] text-[15px] font-semibold text-white shadow-[0_10px_26px_rgba(43,184,191,0.32)] transition-all duration-300 ease-[cubic-bezier(0.16,1,0.3,1)] hover:bg-[#22A9B0] hover:shadow-[0_14px_32px_rgba(43,184,191,0.42)] active:scale-[0.98]"
+            triggerClassName={`group w-full justify-center gap-2 rounded-full bg-[#2BB8BF] font-semibold text-white shadow-[0_10px_26px_rgba(43,184,191,0.32)] transition-all duration-300 ease-[cubic-bezier(0.16,1,0.3,1)] hover:bg-[#22A9B0] hover:shadow-[0_14px_32px_rgba(43,184,191,0.42)] active:scale-[0.98] ${compact ? 'h-10 text-sm' : 'h-12 text-[15px]'}`}
           />
 
           <a
             href={whatsappHref}
             target="_blank"
             rel="noreferrer"
-            className="group flex h-12 w-full items-center justify-center gap-2 rounded-full border border-[#D7E8F7] bg-white text-[15px] font-semibold text-[#112B49] transition-all duration-300 ease-[cubic-bezier(0.16,1,0.3,1)] hover:border-[#2BB8BF] hover:bg-[#F4FCFC] hover:text-[#187AA6] active:scale-[0.98]"
+            className={`group flex w-full items-center justify-center gap-2 rounded-full border border-[#D7E8F7] bg-white font-semibold text-[#112B49] transition-all duration-300 ease-[cubic-bezier(0.16,1,0.3,1)] hover:border-[#2BB8BF] hover:bg-[#F4FCFC] hover:text-[#187AA6] active:scale-[0.98] ${compact ? 'h-10 text-sm' : 'h-12 text-[15px]'}`}
           >
             <FaWhatsapp className="h-[18px] w-[18px] text-[#25D366]" />
             Consultar por WhatsApp
           </a>
-
-          <div className="rounded-2xl border border-[#D6E8F7] bg-white p-4 text-sm text-slate-700 space-y-2">
-            <div className="flex items-start gap-2">
-              <CheckCircle2 className="h-4 w-4 text-[#16A34A] mt-0.5" />
-              <span>Reservá con seña, pagá el resto en cuotas</span>
-            </div>
-            <div className="flex items-start gap-2">
-              <CheckCircle2 className="h-4 w-4 text-[#16A34A] mt-0.5" />
-              <span>Cancelación flexible hasta 30 días antes</span>
-            </div>
-            <div className="flex items-start gap-2">
-              <CheckCircle2 className="h-4 w-4 text-[#16A34A] mt-0.5" />
-              <span>Asistencia 24/7 durante tu viaje</span>
-            </div>
-          </div>
         </div>
       </div>
 
-      <div className="rounded-3xl border border-[#D2E5F6] bg-white shadow-[0_14px_30px_rgba(15,66,116,0.08)] p-5">
+      {!compact ? <><div className="rounded-3xl border border-[#D2E5F6] bg-white shadow-[0_14px_30px_rgba(15,66,116,0.08)] p-5">
         <div className="text-sm font-bold text-[#0D223F]">¿Tenés dudas?</div>
         <div className="mt-2 flex items-start gap-3">
           <div className="h-10 w-10 rounded-2xl bg-[#EAF6FF] flex items-center justify-center">
@@ -181,6 +167,7 @@ export default function PaqueteSidebar({ paquete }: PaqueteSidebarProps) {
           ))}
         </div>
       </div>
+      </> : null}
     </div>
   );
 }

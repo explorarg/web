@@ -522,8 +522,8 @@ function PaquetesClientContent({ paquetes, categorias }: PaquetesClientProps) {
     mes !== '';
 
   return (
-    <section className="bg-[#F5FAFF] pb-12 pt-6 md:pb-16 md:pt-10">
-      <div className="container mx-auto px-4 md:px-6 lg:px-8">
+    <section className="w-full min-w-0 overflow-x-clip bg-[#F5FAFF] pb-12 pt-6 md:pb-16 md:pt-10">
+      <div className="container mx-auto w-full min-w-0 px-4 md:px-6 lg:px-8">
         <div className="grid grid-cols-1 lg:grid-cols-4 gap-6 lg:gap-8">
           <aside className="lg:col-span-1">
             <div className="lg:hidden mb-4">
@@ -711,8 +711,31 @@ function PaquetesClientContent({ paquetes, categorias }: PaquetesClientProps) {
 
                 {/* Paginación */}
                 {totalPages > 1 && (
-                  <div className="mt-12 flex flex-col items-center gap-4">
-                    <div className="flex items-center gap-2">
+                  <div className="mt-12 flex w-full max-w-full flex-col items-center gap-4">
+                    <div className="flex max-w-full items-center gap-2 sm:hidden">
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => setCurrentPage((prev) => Math.max(prev - 1, 1))}
+                        disabled={currentPage === 1}
+                        aria-label="Página anterior"
+                        className="h-9 w-9 shrink-0 p-0"
+                      >
+                        <ChevronLeft className="h-4 w-4" />
+                      </Button>
+                      <span className="min-w-[6.5rem] text-center text-sm font-semibold text-gray-600">{currentPage} / {totalPages}</span>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => setCurrentPage((prev) => Math.min(prev + 1, totalPages))}
+                        disabled={currentPage === totalPages}
+                        aria-label="Página siguiente"
+                        className="h-9 w-9 shrink-0 p-0"
+                      >
+                        <ChevronRight className="h-4 w-4" />
+                      </Button>
+                    </div>
+                    <div className="hidden items-center gap-2 sm:flex">
                       {/* Primera página */}
                       <Button
                         variant="outline"
@@ -794,7 +817,7 @@ function PaquetesClientContent({ paquetes, categorias }: PaquetesClientProps) {
                       </Button>
                     </div>
 
-                    <p className="text-base text-gray-500">
+                    <p className="hidden text-base text-gray-500 sm:block">
                       Página {currentPage} de {totalPages}
                     </p>
                   </div>

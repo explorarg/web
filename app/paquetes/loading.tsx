@@ -30,7 +30,7 @@ function CardSkeleton() {
 
 export default function LoadingPaquetes() {
   return (
-    <div className="min-h-[100dvh] bg-[#F5FAFF]">
+    <div className="min-h-[100dvh] w-full min-w-0 overflow-x-clip bg-[#F5FAFF]">
       <Navbar variant="homeMockup" reserveSpace />
 
       <section className="border-b border-[#E4EDF6] bg-[#F5FAFF]">
@@ -74,7 +74,7 @@ export default function LoadingPaquetes() {
             <div className="lg:col-span-3">
               <div className="mb-6 flex items-center justify-between gap-3 border-b border-gray-200 pb-4">
                 <Line className="w-24" />
-                <div className="flex gap-3">
+                <div className="hidden gap-3 sm:flex">
                   <div className="h-9 w-40 rounded-md skeleton" />
                   <div className="h-9 w-32 rounded-md skeleton" />
                 </div>

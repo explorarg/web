@@ -54,9 +54,9 @@ export default function HomeHero({ paquetes, backgroundImage }: Props) {
   };
 
   return (
-    <section className="relative z-20">
+    <section className="relative z-20 w-full min-w-0 overflow-x-clip">
       <div
-        className="group/hero relative min-h-[640px] pb-[70px] md:min-h-[720px] md:pb-[110px]"
+        className="group/hero relative min-h-[560px] pb-16 sm:min-h-[620px] md:min-h-[720px] md:pb-[110px]"
         onPointerMove={handlePointerMove}
         onPointerLeave={handlePointerLeave}
       >
@@ -96,10 +96,10 @@ export default function HomeHero({ paquetes, backgroundImage }: Props) {
 
         <motion.div
           style={{ x: contentX, y: contentY }}
-          className="relative z-20 container mx-auto px-4 md:px-6 lg:px-8 h-full flex flex-col justify-center pt-16 md:pt-20 lg:pt-24"
+          className="relative z-20 container mx-auto flex h-full min-w-0 flex-col justify-center px-4 pt-12 sm:px-6 sm:pt-16 lg:px-8 lg:pt-24"
         >
           <motion.div
-            className="max-w-2xl pt-10 md:pt-16"
+            className="max-w-2xl pt-8 sm:pt-10 md:pt-16"
             initial="hidden"
             animate="visible"
             variants={{
@@ -131,7 +131,7 @@ export default function HomeHero({ paquetes, backgroundImage }: Props) {
           </motion.div>
 
           <motion.div
-            className="mt-8 md:mt-10 max-w-5xl"
+            className="mt-6 w-full min-w-0 max-w-5xl md:mt-10"
             initial={{ opacity: 0, y: 22 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.75, ease: [0.16, 1, 0.3, 1], delay: 0.45 }}

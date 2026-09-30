@@ -140,7 +140,7 @@ export default async function PaquetesPage({
   }
 
   return (
-    <>
+    <div className="w-full min-w-0 overflow-x-clip bg-[#F5FAFF]">
       <Navbar variant="homeMockup" reserveSpace />
       <WhatsAppButton />
 
@@ -163,6 +163,6 @@ export default async function PaquetesPage({
       <PaquetesClient paquetes={paquetes} categorias={categorias} />
 
       <HomeFooter />
-    </>
+    </div>
   );
 }

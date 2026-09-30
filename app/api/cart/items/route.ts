@@ -662,12 +662,11 @@ export async function DELETE(request: NextRequest) {
 
   try {
     await runTransaction(db, async (tx) => {
-      const cartSnap = await tx.get(cartRef);
+      const [cartSnap, itemSnap] = await Promise.all([tx.get(cartRef), tx.get(itemRef)]);
       if (!cartSnap.exists()) throw new Error('Carrito no encontrado.');
       const cartData: any = cartSnap.data();
       if (cartData.status === 'paid') throw new Error('El carrito ya fue pagado.');
 
-      const itemSnap = await tx.get(itemRef);
       if (!itemSnap.exists()) throw new Error('Item no encontrado.');
       const item: any = itemSnap.data();
 
@@ -675,47 +674,41 @@ export async function DELETE(request: NextRequest) {
       const packageId = item.packageId as string | undefined;
       const date = item.date as string | undefined;
       const people = Number(item.people ?? 0);
-      const holdStatus = String(item.holdStatus ?? 'active');
       const selectedSeatLabels = Array.isArray(item.selectedSeats) ? item.selectedSeats.map((s: any) => String(s)) : [];
       const itemSeatLayoutId = item.seatLayoutId ? String(item.seatLayoutId).trim() : '';
 
-      if (holdId && packageId && date && people > 0 && holdStatus === 'active') {
+      if (holdId && packageId && date) {
         const holdRef = doc(db, 'reservationHolds', holdId);
-        const holdSnap = await tx.get(holdRef);
-        
-        let lockSnap = null;
-        if (date !== 'sin-fecha') {
-          const lockRef = doc(db, 'stockHolds', `${packageId}_${date}`);
-          lockSnap = await tx.get(lockRef);
-        }
-
-        let seatResSnap = null;
+        const lockRef = date !== 'sin-fecha' ? doc(db, 'stockHolds', `${packageId}_${date}`) : null;
+        const seatResRef = selectedSeatLabels.length > 0
+          ? doc(db, 'seatReservations', getSeatDepartureId(packageId, date))
+          : null;
+        const [holdSnap, lockSnap, seatResSnap] = await Promise.all([
+          tx.get(holdRef),
+          lockRef ? tx.get(lockRef) : Promise.resolve(null),
+          seatResRef ? tx.get(seatResRef) : Promise.resolve(null),
+        ]);
         let templateSnap = null;
-        if (selectedSeatLabels.length > 0) {
-          const seatResRef = doc(db, 'seatReservations', getSeatDepartureId(packageId, date));
-          seatResSnap = await tx.get(seatResRef);
-          if (seatResSnap.exists()) {
-            const seatResData: any = seatResSnap.data();
-            const seatLayoutId = itemSeatLayoutId || String(seatResData?.seatLayoutId ?? '');
-            if (seatLayoutId) {
-              templateSnap = await tx.get(doc(db, 'seatLayouts', seatLayoutId));
-            }
+        if (seatResSnap?.exists()) {
+          const seatResData: any = seatResSnap.data();
+          const seatLayoutId = itemSeatLayoutId || String(seatResData?.seatLayoutId ?? '');
+          if (seatLayoutId) {
+            templateSnap = await tx.get(doc(db, 'seatLayouts', seatLayoutId));
           }
         }
 
         // --- INICIO DE ESCRITURAS ---
-        if (holdSnap.exists()) {
+        const holdIsActive = holdSnap.exists() && String((holdSnap.data() as any)?.status ?? 'active') === 'active';
+        if (holdIsActive) {
           tx.update(holdRef, { status: 'released', releasedAt: now, updatedAt: now });
         }
 
-        if (date !== 'sin-fecha' && lockSnap?.exists()) {
-          const lockRef = doc(db, 'stockHolds', `${packageId}_${date}`);
+        if (holdIsActive && lockRef && lockSnap?.exists()) {
           const heldPeople = Number((lockSnap.data() as any)?.heldPeople ?? 0);
-          tx.update(lockRef, { heldPeople: Math.max(0, heldPeople - people), updatedAt: now });
+          tx.update(lockRef, { heldPeople: Math.max(0, heldPeople - Math.max(0, people)), updatedAt: now });
         }
 
-        if (selectedSeatLabels.length > 0 && seatResSnap?.exists() && templateSnap?.exists()) {
-          const seatResRef = doc(db, 'seatReservations', getSeatDepartureId(packageId, date));
+        if (selectedSeatLabels.length > 0 && seatResRef && seatResSnap?.exists() && templateSnap?.exists()) {
           const seatResData: any = seatResSnap.data();
           const template = { id: templateSnap.id, ...(templateSnap.data() as any) } as SeatLayoutTemplate;
           const seatIds = seatIdsFromLabels(template, selectedSeatLabels);
@@ -738,8 +731,6 @@ export async function DELETE(request: NextRequest) {
     const message = err instanceof Error ? err.message : 'No se pudo eliminar el item.';
     return NextResponse.json({ error: message }, { status: 400 });
   }
-
-  await updateDoc(cartRef, { updatedAt: now }).catch(() => {});
   return NextResponse.json({ ok: true });
 }
 
