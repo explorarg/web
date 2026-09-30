@@ -19,7 +19,7 @@ import {
 import { Textarea } from '@/components/ui/textarea';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { toast } from 'sonner';
-import { Loader2, Trash2, CheckCircle2, XCircle, Info, Save } from 'lucide-react';
+import { Loader2, Trash2, CheckCircle2, XCircle, Info, Save, TicketPercent } from 'lucide-react';
 import { useAuth } from '@/hooks/useAuth';
 import type {
   ReservationRoomSelection,
@@ -219,6 +219,10 @@ export default function AdminReservaForm({
   const [seatDialogOpen, setSeatDialogOpen] = useState(false);
   const [seatLoading, setSeatLoading] = useState(false);
   const [seatData, setSeatData] = useState<{ template: SeatLayoutTemplate; seats: DepartureSeat[] } | null>(null);
+  const [couponCode, setCouponCode] = useState('');
+  const [couponQuote, setCouponQuote] = useState<{ couponCode: string; discount: { nombre: string; montoDescuento: number }; totalCents: number } | null>(null);
+  const [couponQuoteLoading, setCouponQuoteLoading] = useState(false);
+  const [couponQuoteError, setCouponQuoteError] = useState('');
 
   // Derivados del formulario
   const selectedPaquete = useMemo(
@@ -572,6 +576,64 @@ export default function AdminReservaForm({
     return form.selectedSeatIds.map((id) => seatLabelById.get(id) || id).filter(Boolean);
   }, [form.selectedSeatIds, seatLabelById]);
 
+  useEffect(() => {
+    const normalizedCode = couponCode.trim().toUpperCase();
+    if (isVendorMode || !normalizedCode) {
+      setCouponQuote(null);
+      setCouponQuoteError('');
+      setCouponQuoteLoading(false);
+      return;
+    }
+    if (!user || !selectedPaquete || !form.date || !EMAIL_REGEX.test(form.customerEmail.trim()) || peopleTotal < 1) {
+      setCouponQuote(null);
+      setCouponQuoteError('Completá el email, el paquete, la fecha y los pasajeros para validar el cupón.');
+      setCouponQuoteLoading(false);
+      return;
+    }
+    if (currency !== 'ARS') {
+      setCouponQuote(null);
+      setCouponQuoteError('Los cupones solo se pueden aplicar a ventas en ARS.');
+      setCouponQuoteLoading(false);
+      return;
+    }
+    const controller = new AbortController();
+    setCouponQuote(null);
+    setCouponQuoteError('');
+    setCouponQuoteLoading(true);
+    const timer = window.setTimeout(async () => {
+      try {
+        const token = await user.getIdToken();
+        const response = await fetch('/api/admin/reservas/coupon-quote', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+          body: JSON.stringify({
+            packageId: selectedPaquete.id,
+            date: form.date,
+            peopleAdults: Math.max(0, Number(form.adults) || 0),
+            peopleMinors: Math.max(0, Number(form.minors) || 0),
+            roomType: form.roomType || undefined,
+            pickupPoint: form.pickupPoint || undefined,
+            selectedSeats: seatsEnabled ? selectedSeatLabels : [],
+            customerEmail: form.customerEmail.trim().toLowerCase(),
+            couponCode: normalizedCode,
+          }),
+          signal: controller.signal,
+        });
+        const result = await response.json().catch(() => ({}));
+        if (!response.ok) throw new Error(result.error ?? 'No se pudo validar el cupón.');
+        setCouponQuote(result);
+      } catch (error) {
+        if (!controller.signal.aborted) setCouponQuoteError(error instanceof Error ? error.message : 'No se pudo validar el cupón.');
+      } finally {
+        if (!controller.signal.aborted) setCouponQuoteLoading(false);
+      }
+    }, 300);
+    return () => {
+      window.clearTimeout(timer);
+      controller.abort();
+    };
+  }, [couponCode, currency, form.adults, form.customerEmail, form.date, form.minors, form.pickupPoint, form.roomType, isVendorMode, peopleTotal, seatsEnabled, selectedPaquete, selectedSeatLabels, user]);
+
   // Manejar cambios en el formulario
   const handleFormChange = (field: keyof FormState, value: any) => {
     setForm((prev) => ({ ...prev, [field]: value }));
@@ -646,6 +708,9 @@ export default function AdminReservaForm({
   const clearDraft = () => {
     setForm(getDefaultFormState(paquetes));
     setAttachments([]);
+    setCouponCode('');
+    setCouponQuote(null);
+    setCouponQuoteError('');
     toast.success('Borrador limpiado');
   };
 
@@ -687,6 +752,10 @@ export default function AdminReservaForm({
   // Submit
   const handleSubmit = async (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();
+    if (!isVendorMode && couponCode.trim() && (!couponQuote || couponQuoteLoading || couponQuoteError)) {
+      toast.error(couponQuoteError || 'Esperá a que el cupón termine de validarse.');
+      return;
+    }
     if (!isFormValid) {
       toast.error('Por favor completá todos los campos obligatorios');
       return;
@@ -723,6 +792,7 @@ export default function AdminReservaForm({
         customerCountry: form.customerCountry || undefined,
         customerDocument: form.customerDocument || undefined,
         customerBirthDate: form.customerBirthDate || undefined,
+        ...(!isVendorMode && couponCode.trim() ? { couponCode: couponCode.trim().toUpperCase() } : {}),
         customerComments: form.customerComments || undefined,
         passengerDetails: sanitizedPassengerDetails,
         ...(form.pickupPoint ? { pickupPoint: form.pickupPoint } : {}),
@@ -1320,7 +1390,7 @@ export default function AdminReservaForm({
 
             {/* Botón de submit */}
             <div className="flex flex-col gap-3 pt-4">
-              <Button type="submit" variant="success" disabled={submitting || !isFormValid} className="text-base py-6">
+              <Button type="submit" variant="success" disabled={submitting || !isFormValid || (!isVendorMode && Boolean(couponCode.trim()) && (!couponQuote || couponQuoteLoading || Boolean(couponQuoteError)))} className="text-base py-6">
                 {submitting ? (
                   <>
                     <Loader2 className="mr-2 h-4 w-4 animate-spin" />
@@ -1375,6 +1445,14 @@ export default function AdminReservaForm({
                     <div className="text-2xl font-bold text-gray-900">
                       {formatAmountCents(originalPackageAmount, currency)}
                     </div>
+                    {!isVendorMode && <div className="mt-4 space-y-2 border-t border-gray-100 pt-3">
+                      <Label htmlFor="manual-sale-coupon" className="flex items-center gap-1.5 text-xs font-semibold normal-case tracking-normal text-gray-700"><TicketPercent className="h-3.5 w-3.5 text-[#18878B]" />Cupón de comunidad</Label>
+                      <Input id="manual-sale-coupon" value={couponCode} onChange={(event) => setCouponCode(event.target.value.toUpperCase())} placeholder="Ingresá el código" autoComplete="off" className="h-10 uppercase" />
+                      <p className="text-[11px] leading-4 text-gray-500">Se valida para el miembro asociado al email del cliente y se aplica solo al precio del paquete.</p>
+                      {couponQuoteLoading && <div className="flex items-center gap-2 text-xs text-gray-500"><Loader2 className="h-3.5 w-3.5 animate-spin" />Validando cupón…</div>}
+                      {!couponQuoteLoading && couponQuote && <div className="rounded-lg bg-emerald-50 px-3 py-2 text-xs font-semibold text-emerald-800">{couponQuote.discount.nombre} · Cupón {couponQuote.couponCode} validado.</div>}
+                      {!couponQuoteLoading && couponQuoteError && <p role="alert" className="text-xs text-rose-700">{couponQuoteError}</p>}
+                    </div>}
                     {(seatCategoryExtraDetails.length > 0 || singlePassengerSurcharge.applies) && (
                       <div className="mt-3 space-y-1">
                         {seatCategoryExtraDetails.map((extra) => (
@@ -1389,12 +1467,12 @@ export default function AdminReservaForm({
                             <span>+ {formatAmountCents(singlePassengerSurcharge.amount, currency)}</span>
                           </div>
                         )}
-                        <div className="border-t border-gray-100 pt-2 mt-2 font-semibold text-sm text-gray-900 flex justify-between">
-                          <span>Total</span>
-                          <span>{formatAmountCents(computedPricing.subtotalAmount, currency)}</span>
-                        </div>
                       </div>
                     )}
+                    <div className="mt-3 border-t border-gray-100 pt-3">
+                      {couponQuote && <div className="mb-2 flex justify-between gap-2 text-sm font-semibold text-emerald-800"><span>Descuento {couponQuote.couponCode}</span><span>− {formatAmountCents(couponQuote.discount.montoDescuento, currency)}</span></div>}
+                      <div className="flex justify-between gap-2 text-sm font-bold text-gray-900"><span>Total de la venta</span><span>{formatAmountCents(couponQuote?.totalCents ?? computedPricing.subtotalAmount, currency)}</span></div>
+                    </div>
                   </div>
                 )}
 

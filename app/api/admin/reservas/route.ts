@@ -7,6 +7,13 @@ import {
   updateReservaStatus,
 } from '@/lib/reservas';
 import { getPaqueteById } from '@/lib/paquetes';
+import { getAdminDb } from '@/lib/firebaseAdmin';
+import {
+  confirmCommunityRedemption,
+  quoteCommunityPromotion,
+  releaseCommunityRedemption,
+  reserveCommunityRedemption,
+} from '@/lib/community/redemptions';
 import { requireAdminToken } from '@/lib/adminAuth';
 import { getStockDisponible, registrarMovimientoStock } from '@/lib/stock';
 import { randomUUID } from 'crypto';
@@ -130,6 +137,7 @@ const adminReservaSchema = z.object({
   customerCountry: z.string().max(40).optional(),
   customerDocument: z.string().max(40).optional(),
   customerBirthDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).optional(),
+  couponCode: z.string().trim().min(1).max(40).optional(),
   customerComments: z.string().max(500).optional(),
   passengerDetails: z.array(travelerSchema).max(49).optional(),
   attachments: z.array(attachmentSchema).optional(),
@@ -528,6 +536,9 @@ function getReservationEmailCopy(
     peopleLabel,
     seatsLabel,
     amountFormatted: formatEmailAmount(reservation.amountTotal ?? 0, reservation.currency ?? 'ARS'),
+    discountName: Number((reservation as any).communityDiscountAmount ?? 0) > 0 ? String((reservation as any).communityDiscount?.nombre ?? 'Cupón de comunidad') : '',
+    discountAmountFormatted: Number((reservation as any).communityDiscountAmount ?? 0) > 0 ? formatEmailAmount(Number((reservation as any).communityDiscountAmount), reservation.currency ?? 'ARS') : '',
+    promotionCode: String((reservation as any).communityPromotionCode ?? ''),
     reservationCode,
     lookupUrl,
     sessionId: reservation.orderId || reservation.id,
@@ -825,8 +836,6 @@ export async function POST(request: Request) {
     if (!Number.isFinite(unitAmount) || unitAmount < 1 || computedPricing.subtotalAmount < 1) {
       return NextResponse.json({ error: 'Este paquete no tiene configurado un valor de reserva válido.' }, { status: 400 });
     }
-    const amountTotal = computedPricing.subtotalAmount;
-
     const baseCapacity = payload.date !== 'sin-fecha' ? getBaseCapacity(paquete, payload.date) : 0;
     if (!allowOverbook && payload.date !== 'sin-fecha' && (payload.status ?? 'reserved') !== 'cancelled') {
       const available = await getStockDisponible(paquete.id, payload.date, baseCapacity);
@@ -881,16 +890,65 @@ export async function POST(request: Request) {
       people,
     });
 
+    const status = payload.status ?? 'reserved';
+    const reservaRef = doc(collection(db, COLLECTION));
+    let communityUid: string | null = null;
+    let communityDiscount: any = null;
+    let communityRedemptionId = '';
+    const manualCouponCode = String(payload.couponCode ?? '').trim().toUpperCase();
+    if (manualCouponCode) {
+      if (creatorAuth.kind !== 'admin') return NextResponse.json({ error: 'Solo administración puede aplicar cupones de comunidad a una venta manual.' }, { status: 403 });
+      if (status === 'cancelled') return NextResponse.json({ error: 'No se puede aplicar un cupón al crear una venta cancelada.' }, { status: 400 });
+      const adminDb = getAdminDb();
+      if (!adminDb) return NextResponse.json({ error: 'El servicio de comunidad no está disponible.' }, { status: 503 });
+      if (!payload.customerEmail.trim()) return NextResponse.json({ error: 'Ingresá el email del miembro para aplicar el cupón.' }, { status: 400 });
+      try {
+        const normalizedEmail = payload.customerEmail.trim().toLowerCase();
+        const profiles = await adminDb.collection('usuarios').where('email', '==', normalizedEmail).limit(2).get();
+        if (profiles.size !== 1 || profiles.docs[0].data()?.activo === false) {
+          return NextResponse.json({ error: 'El email debe pertenecer a un miembro activo de la comunidad.' }, { status: 400 });
+        }
+        communityUid = profiles.docs[0].id;
+        const packages = [{ id: paquete.id, title: paquete.titulo, date: payload.date, people }];
+        const quote = await quoteCommunityPromotion({
+          uid: communityUid,
+          couponCode: manualCouponCode,
+          subtotalCents: repriced.baseSubtotalAmount,
+          currency: currency.toUpperCase(),
+        });
+        if (!quote.discount || quote.promotion?.kind !== 'coupon') {
+          return NextResponse.json({ error: 'El cupón no aplica a esta venta.' }, { status: 400 });
+        }
+        const reserved = await reserveCommunityRedemption({
+          uid: communityUid,
+          couponCode: manualCouponCode,
+          subtotalCents: repriced.baseSubtotalAmount,
+          currency: currency.toUpperCase(),
+          expiresAt: new Date(Date.now() + 10 * 60 * 1000),
+          packages,
+          orderId: reservaRef.id,
+          promotion: quote.promotion,
+        });
+        communityRedemptionId = reserved.redemptionId;
+        communityDiscount = reserved.discount;
+      } catch (error) {
+        return NextResponse.json({ error: error instanceof Error ? error.message : 'No se pudo validar el cupón.' }, { status: 400 });
+      }
+    }
+    const communityDiscountAmount = Math.max(0, Number(communityDiscount?.montoDescuento ?? 0));
+    const amountTotal = Math.max(0, repriced.subtotalAmount - communityDiscountAmount);
+    const discountedBaseSubtotal = Math.max(0, repriced.baseSubtotalAmount - communityDiscountAmount);
+
     let referredBy = null;
     try {
       referredBy = await resolveReservationReferralAssignment({
         packageId: paquete.id,
-        amountTotal: repriced.subtotalAmount,
+        amountTotal,
         commissionBaseAmount: getReservationOfficialBaseAmount({
           pricingBaseUnitAmount: repriced.baseUnitAmount,
           people,
-          baseSubtotalAmount: repriced.baseSubtotalAmount,
-          amountTotal: repriced.subtotalAmount,
+          baseSubtotalAmount: discountedBaseSubtotal,
+          amountTotal,
           extrasTotalAmount: repriced.extrasTotalAmount,
         }),
         extrasExcludedAmount: repriced.extrasTotalAmount,
@@ -900,6 +958,7 @@ export async function POST(request: Request) {
         referralCode: payload.referralCode,
       });
     } catch (error) {
+      if (communityRedemptionId) await releaseCommunityRedemption(communityRedemptionId, 'manual_sale_referral_error');
       return NextResponse.json(
         { error: error instanceof Error ? error.message : 'No se pudo asignar el referido.' },
         { status: 400 }
@@ -907,8 +966,6 @@ export async function POST(request: Request) {
     }
 
     const now = Timestamp.now();
-    const status = payload.status ?? 'reserved';
-    const reservaRef = doc(collection(db, COLLECTION));
     const stockRef = payload.date !== 'sin-fecha' ? doc(db, 'stockMovimientos', `admin_${reservaRef.id}`) : null;
 
     try {
@@ -937,7 +994,7 @@ export async function POST(request: Request) {
               referenceId: reservaRef.id,
               note: payload.statusNote ?? `Reserva manual creada (${status})${allowOverbook ? ' · OVERBOOK' : ''}`,
               baseCapacityAtThatTime: baseCapacity,
-              amountTotal: repriced.subtotalAmount,
+              amountTotal,
               currency,
               createdAt: now,
             };
@@ -1045,7 +1102,8 @@ export async function POST(request: Request) {
           unitAmountMinors: repriced.unitAmountMinors,
           depositPercentAdults: repriced.depositPercentAdults,
           depositPercentMinors: repriced.depositPercentMinors,
-          baseSubtotalAmount: repriced.baseSubtotalAmount,
+          baseSubtotalAmount: discountedBaseSubtotal,
+          originalBaseSubtotalAmount: repriced.baseSubtotalAmount,
           extrasTotalAmount: repriced.extrasTotalAmount,
           pickupPoint: pickupPoint || null,
           pickupPointTime: resolvedPickupPointTime,
@@ -1053,9 +1111,14 @@ export async function POST(request: Request) {
           roomSelection: roomSelection.length ? roomSelection : null,
           roomSelectionMetrics,
           selectedExtras: pricedSelectedExtras.length ? pricedSelectedExtras : null,
-          amountTotal: repriced.subtotalAmount,
+          amountTotal,
           currency,
           paymentMethod: 'admin',
+          communityDiscountAmount,
+          communityDiscount: communityDiscount ?? null,
+          communityPromotionCode: manualCouponCode,
+          communityUserId: communityUid,
+          communityRedemptionId: communityRedemptionId || null,
           customerEmail,
           customerEmailLower,
           customerName: fullName,
@@ -1075,10 +1138,10 @@ export async function POST(request: Request) {
           status,
           createdByAdmin: creatorAuth.kind === 'admin',
           pricingSnapshot: buildReservationPricingSnapshot({
-            unitAmount: repriced.subtotalAmount > 0 && people > 0 ? Math.round(repriced.subtotalAmount / people) : unitAmount,
+            unitAmount: amountTotal > 0 && people > 0 ? Math.round(amountTotal / people) : unitAmount,
             people,
-            amountTotal: repriced.subtotalAmount,
-            baseSubtotalAmount: repriced.baseSubtotalAmount,
+            amountTotal,
+            baseSubtotalAmount: discountedBaseSubtotal,
             extrasTotalAmount: repriced.extrasTotalAmount,
             currency,
             paymentMethod: 'admin',
@@ -1104,7 +1167,7 @@ export async function POST(request: Request) {
             {
               status,
               actor: 'admin',
-              note: payload.statusNote ?? 'Reserva creada',
+               note: payload.statusNote ?? (manualCouponCode ? `Reserva creada · Cupón ${manualCouponCode}` : 'Reserva creada'),
               createdAt: now,
             },
           ],
@@ -1118,10 +1181,19 @@ export async function POST(request: Request) {
         });
       });
     } catch (error) {
+      if (communityRedemptionId) await releaseCommunityRedemption(communityRedemptionId, 'manual_reservation_create_failed').catch(() => {});
       return NextResponse.json(
         { error: 'No se pudo guardar la reserva', detail: getErrorMessage(error) },
         { status: 400 }
       );
+    }
+
+    if (communityRedemptionId) {
+      try {
+        await confirmCommunityRedemption(communityRedemptionId, `manual_${reservaRef.id}`, [reservaRef.id]);
+      } catch (error) {
+        console.error('[admin/reservas] Manual coupon redemption confirmation failed', { reservationId: reservaRef.id, error });
+      }
     }
 
     return NextResponse.json({ id: reservaRef.id });

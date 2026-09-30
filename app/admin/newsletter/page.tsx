@@ -233,7 +233,7 @@ export default function NewsletterPage() {
           <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
             <div>
               <h1 className="text-lg font-semibold text-gray-900 tracking-tight">Newsletter</h1>
-              <p className="text-gray-600 mt-1">
+              <p className="mt-1 text-sm text-gray-600">
                 Gestiona los suscriptores del newsletter ({subscribers.length} total)
               </p>
             </div>

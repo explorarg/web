@@ -314,7 +314,11 @@ export async function POST(request: Request) {
       const isRejected = isPaymentRejected(paymentStatus);
 
       const payer = paymentInfo.payer;
-      const customerEmail = payer?.email || intentData.customerEmail || '';
+      // The checkout email is the contact/delivery address. Mercado Pago's payer email
+      // may belong to a different account and must only be a fallback for old intents.
+      const customerEmail = String(intentData.customerEmail ?? '').trim()
+        || String(orderData?.customer?.email ?? '').trim()
+        || String(payer?.email ?? '').trim();
       const customerFirstName =
         payer?.first_name ||
         intentData.customerFirstName ||
@@ -1244,7 +1248,10 @@ export async function POST(request: Request) {
 
     // Datos del pagador (del pago de MP)
     const payer = paymentInfo.payer;
-    const customerEmail = payer?.email || intentEmail || '';
+    // Always deliver to the email entered in checkout; payer.email is the MP account email.
+    const customerEmail = String(intentEmail ?? '').trim()
+      || String(intentData.customerEmail ?? '').trim()
+      || String(payer?.email ?? '').trim();
     const customerFirstName =
         payer?.first_name ||
         intentData.customerFirstName ||

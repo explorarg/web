@@ -130,7 +130,7 @@ export default function ComunidadAdminPage() {
   const entries = tab === 'benefit' ? data.beneficios : data.cupones;
 
   return <ProtectedRoute><AdminLayout>
-    <div className="mx-auto max-w-7xl space-y-6 p-4 sm:p-6">
+    <div className="mx-auto space-y-6 p-4 sm:p-6">
       <header className="flex flex-wrap items-end justify-between gap-4"><div><p className="text-sm font-medium text-cyan-700">Explorarg · Administración</p><h1 className="mt-1 text-3xl font-bold text-slate-900">Comunidad y beneficios</h1><p className="mt-2 text-sm text-slate-500">Administrá promociones, beneficios y códigos para los miembros.</p></div><Link href="/admin/comunidad/usuarios"><Button variant="outline"><Users className="mr-2 h-4 w-4" />Administrar miembros</Button></Link></header>
       <section className="grid gap-4 sm:grid-cols-3">
         <Card><CardContent className="flex items-center gap-4 p-5"><span className="rounded-2xl bg-cyan-50 p-3 text-cyan-700"><Users className="h-5 w-5" /></span><div><p className="text-sm text-slate-500">Miembros registrados</p><p className="text-2xl font-bold">{loading ? '—' : data.usuarios}</p></div></CardContent></Card>

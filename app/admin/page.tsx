@@ -500,15 +500,6 @@ export default function AdminDashboard() {
                       href: '/admin/ventas?status=reserved',
                     },
                     {
-                      key: 'avg',
-                      title: 'Ticket promedio',
-                      sub: 'Por reserva activa',
-                      value: formatAmount(calendar.avgTicketCents, 'ARS'),
-                      valueClass: 'text-gray-900',
-                      icon: TrendingUp,
-                      iconClass: 'bg-violet-100 text-violet-700',
-                    },
-                    {
                       key: 'last30',
                       title: 'Últimos 30 días',
                       sub: `${formatAmount(calendar.last30dAmountCents, 'ARS')} facturado`,

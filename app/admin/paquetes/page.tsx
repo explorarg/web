@@ -463,7 +463,7 @@ export default function PaquetesPage() {
                   </Badge>
                 )}
               </div>
-              <p className="text-gray-600 mt-1">
+              <p className="mt-1 text-sm text-gray-600">
                 Gestiona los paquetes turísticos
                 {destacadosCount >= 9 && (
                   <span className="text-amber-600 ml-2">

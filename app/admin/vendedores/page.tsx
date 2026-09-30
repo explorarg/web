@@ -311,9 +311,6 @@ export default function VendedoresPage() {
                     )}
                   </div>
                 </div>
-                <p className="text-xs text-gray-500">
-                  Búsqueda inteligente en tiempo real: ignora tildes, mayúsculas y variaciones comunes de escritura.
-                </p>
               </div>
               <div className="flex items-center gap-3">
                 <Select value={String(itemsPerPage)} onValueChange={(v) => setItemsPerPage(Number(v))}>

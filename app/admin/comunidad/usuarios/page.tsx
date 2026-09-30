@@ -92,7 +92,7 @@ export default function CommunityMembersPage() {
     }
   }
 
-  return <ProtectedRoute><AdminLayout><main className="mx-auto max-w-7xl space-y-6 p-4 sm:p-6">
+  return <ProtectedRoute><AdminLayout><main className="mx-auto space-y-6 p-4 sm:p-6">
     <header className="flex flex-wrap items-center justify-between gap-4"><div><Link href="/admin/comunidad" className="inline-flex items-center gap-2 text-sm text-slate-500 hover:text-slate-900"><ArrowLeft className="h-4 w-4" />Comunidad</Link><h1 className="mt-3 text-3xl font-bold text-slate-900">Miembros</h1><p className="mt-1 text-sm text-slate-500">Administrá el estado y nivel de los miembros de Explorarg.</p></div><Badge variant="secondary">{members.length} cargados</Badge></header>
     <Card><CardHeader><CardTitle className="flex items-center gap-2"><UserRound className="h-5 w-5" />Directorio de miembros</CardTitle><div className="relative mt-3 max-w-md"><Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" /><Input value={search} onChange={event => setSearch(event.target.value)} placeholder="Buscar por nombre, email o teléfono" className="pl-9" /></div></CardHeader><CardContent>
       {loading ? <div className="flex justify-center py-12"><Loader2 className="h-6 w-6 animate-spin text-cyan-700" /></div> : filtered.length === 0 ? <p className="py-10 text-center text-sm text-slate-500">No se encontraron miembros.</p> : <div className="space-y-3">{filtered.map(member => <article key={member.uid} className="grid gap-4 rounded-2xl border border-slate-200 p-4 lg:grid-cols-[minmax(0,1fr)_150px_170px_auto] lg:items-center">

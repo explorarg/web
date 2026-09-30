@@ -195,7 +195,7 @@ export default function CategoriasPage() {
           <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
             <div>
               <h1 className="text-lg font-semibold text-gray-900 tracking-tight">Categorías</h1>
-              <p className="text-gray-600 mt-1">Gestiona las categorías de viajes</p>
+              <p className="mt-1 text-sm text-gray-600">Gestiona las categorías de viajes</p>
             </div>
             <Button asChild className="bg-black hover:bg-gray-800 text-white">
               <Link href="/admin/categorias/nueva">

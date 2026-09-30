@@ -864,15 +864,6 @@ export default function ReservasPage() {
 
               <div className="mt-4 grid gap-3 sm:grid-cols-2 lg:grid-cols-5">
                 <div className="rounded-2xl border border-black/5 bg-white p-3.5">
-                  <p className="text-[11px] uppercase tracking-widest text-gray-500">Ticket promedio</p>
-                  <div className="mt-1.5 flex items-baseline gap-1.5">
-                    <TrendingUp className="h-3.5 w-3.5 shrink-0 text-violet-600" />
-                    <p className="text-xl font-bold text-gray-900">{formatAmount(filteredStats.avgTicket, 'ARS')}</p>
-                  </div>
-                  <p className="mt-1 text-[11px] text-gray-500">Por reserva (monto total / cantidad)</p>
-                </div>
-
-                <div className="rounded-2xl border border-black/5 bg-white p-3.5">
                   <p className="text-[11px] uppercase tracking-widest text-gray-500">Promedio pax / reserva</p>
                   <div className="mt-1.5 flex items-baseline gap-1.5">
                     <Users className="h-3.5 w-3.5 shrink-0 text-sky-600" />
