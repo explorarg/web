@@ -863,14 +863,6 @@ export default function ReservasPage() {
             <section className="rounded-3xl border border-black/5 bg-gradient-to-br from-white to-slate-50/70 p-4 shadow-sm sm:p-5">
 
               <div className="mt-4 grid gap-3 sm:grid-cols-2 lg:grid-cols-5">
-                <div className="rounded-2xl border border-black/5 bg-white p-3.5">
-                  <p className="text-[11px] uppercase tracking-widest text-gray-500">Promedio pax / reserva</p>
-                  <div className="mt-1.5 flex items-baseline gap-1.5">
-                    <Users className="h-3.5 w-3.5 shrink-0 text-sky-600" />
-                    <p className="text-xl font-bold text-gray-900">{filteredStats.avgPeoplePerBooking}</p>
-                  </div>
-                  <p className="mt-1 text-[11px] text-gray-500">Personas promedio por operación</p>
-                </div>
 
                 <div className="rounded-2xl border border-black/5 bg-white p-3.5">
                   <p className="text-[11px] uppercase tracking-widest text-gray-500">Completadas</p>
