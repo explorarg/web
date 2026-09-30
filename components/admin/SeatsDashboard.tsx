@@ -330,7 +330,7 @@ export default function SeatsDashboard({ paquetes, initialPackageId, initialDate
   return (
     <div className="flex flex-col gap-6">
       <div className="flex flex-col gap-1">
-        <h1 className="text-xl font-semibold text-gray-900 tracking-tight">Butacas por salida</h1>
+        <h1 className="text-lg font-semibold text-gray-900 tracking-tight">Butacas por salida</h1>
         <p className="text-sm text-gray-500">Gestioná el mapa de butacas, bloques y asignaciones.</p>
       </div>
 

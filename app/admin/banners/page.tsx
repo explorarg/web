@@ -255,7 +255,7 @@ export default function BannersPage() {
           <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
             <div>
               <h1 className="text-lg font-semibold text-gray-900 tracking-tight">Banners</h1>
-              <p className="text-gray-600 mt-1">
+              <p className="mt-1 text-sm text-gray-600">
                 Administrá los banners activos y el orden de aparición. Modelo recomendado: 1920 x 500 px.
               </p>
             </div>
